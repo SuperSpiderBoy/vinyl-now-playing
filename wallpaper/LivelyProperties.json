@@ -1,0 +1,60 @@
+{
+  "lyricFont": {
+    "type": "dropdown",
+    "value": 0,
+    "text": "歌词字体 / Lyrics Font",
+    "items": [
+      "衬线英文 × 原版中文 / Playfair & Sans (推荐)",
+      "文楷 × 衬线 / WenKai & Playfair",
+      "杂志中宋 / ZhongSong & Playfair"
+    ]
+  },
+  "enableMotionCover": {
+    "type": "checkbox",
+    "value": true,
+    "text": "Apple Music 动态封面 / Motion Cover"
+  },
+  "showTonearm": {
+    "type": "checkbox",
+    "value": true,
+    "text": "黑胶唱臂动画 / Tonearm"
+  },
+  "vinylSpin": {
+    "type": "checkbox",
+    "value": true,
+    "text": "黑胶旋转 / Spin Vinyl"
+  },
+  "showTranslation": {
+    "type": "checkbox",
+    "value": true,
+    "text": "双语歌词翻译 / Bilingual Lyrics"
+  },
+  "showDust": {
+    "type": "checkbox",
+    "value": true,
+    "text": "背景微尘光斑 / Ambient Light Dust"
+  },
+  "showClock": {
+    "type": "checkbox",
+    "value": true,
+    "text": "右上角极简时钟 / Editorial Clock"
+  },
+  "audioReactive": {
+    "type": "checkbox",
+    "value": true,
+    "text": "音频微光律动 / Audio Breathing"
+  },
+  "filmGrain": {
+    "type": "checkbox",
+    "value": true,
+    "text": "胶片颗粒质感 / Film Grain"
+  },
+  "lyricScale": {
+    "type": "slider",
+    "min": 85,
+    "max": 125,
+    "step": 5,
+    "value": 100,
+    "text": "歌词字号缩放 (%) / Lyrics Scale"
+  }
+}

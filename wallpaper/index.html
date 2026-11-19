@@ -1,0 +1,1799 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vinyl Now Playing — Apple Editorial</title>
+<link rel="stylesheet" href="./fonts/wenkai/wenkai.css">
+<style>
+  /* Local bundled Playfair Display (600/700 + Italic) for editorial Latin lyrics */
+  @font-face {
+    font-family: 'Playfair Display';
+    font-style: normal;
+    font-weight: 600 700;
+    font-display: swap;
+    src: url('./fonts/playfair-latin-ext.woff2') format('woff2');
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF;
+  }
+  @font-face {
+    font-family: 'Playfair Display';
+    font-style: normal;
+    font-weight: 600 700;
+    font-display: swap;
+    src: url('./fonts/playfair-latin.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2212, U+FEFF, U+FFFD;
+  }
+  @font-face {
+    font-family: 'Playfair Display';
+    font-style: italic;
+    font-weight: 600;
+    font-display: swap;
+    src: url('./fonts/playfair-italic-latin.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+20AC, U+2122, U+2212, U+FEFF, U+FFFD;
+  }
+
+  :root {
+    --accent: #f3dfbf;
+    --accent-rgb: 243, 223, 191;
+    --glow-rgb: 140, 118, 175;
+    --audio-energy: 0;
+    --lyric-scale: 1;
+    --lyric-font: "Playfair Display", -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", "PingFang SC", "Microsoft YaHei UI", sans-serif;
+    --lyric-weight: 700;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #09090d;
+    color: #f7f7f9;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", "PingFang SC", "Microsoft YaHei UI", sans-serif;
+    user-select: none;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* 1. Living Fluid Aurora Mesh Canvas */
+  #bgCanvas {
+    position: fixed;
+    inset: -8%;
+    width: 116vw;
+    height: 116vh;
+    z-index: 0;
+    filter: blur(52px) saturate(1.38) contrast(1.06);
+    transform: translateZ(0);
+  }
+
+  .bg-cover-veil {
+    position: fixed;
+    inset: -12%;
+    width: 124%;
+    height: 124%;
+    object-fit: cover;
+    opacity: 0;
+    filter: blur(95px) saturate(1.5) brightness(0.42);
+    mix-blend-mode: soft-light;
+    transition: opacity 1.1s ease;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  /* 2. Floating Atmospheric Bokeh / Vinyl Dust Canvas */
+  #dustCanvas {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 1;
+    pointer-events: none;
+    transition: opacity 0.6s ease;
+  }
+
+  /* 3. Fine 35mm Organic Film Grain & Studio Vignette */
+  .grain {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    opacity: 0.04;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .vignette {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    background:
+      radial-gradient(ellipse at 28% 50%, transparent 25%, rgba(0, 0, 0, 0.36) 100%),
+      linear-gradient(to bottom, rgba(0,0,0,0.22) 0%, transparent 18%, transparent 82%, rgba(0,0,0,0.34) 100%);
+  }
+
+  /* 4. Top-Right Editorial Ambient Clock */
+  .clock-widget {
+    position: fixed;
+    top: 5.8vh;
+    right: 3.8vw;
+    z-index: 3;
+    text-align: right;
+    pointer-events: none;
+    transition: opacity 0.5s ease;
+  }
+  .clock-time {
+    font-family: "Playfair Display", Georgia, serif;
+    font-size: clamp(1.45rem, 2.0vw, 2.3rem);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    font-variant-numeric: tabular-nums;
+    color: rgba(255, 255, 255, 0.56);
+    line-height: 1;
+  }
+  .clock-date {
+    margin-top: 6px;
+    font-size: 0.64rem;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.36);
+    font-weight: 500;
+  }
+
+  /* 5. Main Stage */
+  .stage {
+    position: relative;
+    z-index: 2;
+    width: 100vw;
+    height: 100vh;
+    display: grid;
+    grid-template-columns: minmax(300px, 34vw) minmax(380px, 47vw);
+    align-items: center;
+    justify-content: center;
+    gap: 5.5vw;
+    padding: 7vh 5.2vw 8.5vh 9.2vw;
+  }
+
+  /* Left Column: Hi-Fi Vinyl Deck + Editorial Metadata */
+  .left-col {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2.6vh;
+    max-width: 100%;
+  }
+
+  .deck {
+    position: relative;
+    width: min(25.5vw, 41vh);
+    height: min(25.5vw, 41vh);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .echo-rings {
+    position: absolute;
+    inset: -38%;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.45;
+    background:
+      radial-gradient(circle at 58% 50%, transparent 44%, rgba(255,255,255,0.035) 44.2%, transparent 44.5%),
+      radial-gradient(circle at 58% 50%, transparent 56%, rgba(255,255,255,0.028) 56.2%, transparent 56.5%),
+      radial-gradient(circle at 58% 50%, transparent 68%, rgba(255,255,255,0.02) 68.2%, transparent 68.5%);
+    transform: scale(calc(1 + var(--audio-energy) * 0.035));
+    transition: transform 0.2s linear;
+  }
+
+  .aura {
+    position: absolute;
+    inset: -14%;
+    border-radius: 32px;
+    background: radial-gradient(circle, rgba(var(--glow-rgb), 0.72) 0%, transparent 68%);
+    opacity: calc(0.26 + var(--audio-energy) * 0.42);
+    filter: blur(42px);
+    transform: scale(calc(1 + var(--audio-energy) * 0.09));
+    transition: opacity 0.14s linear, transform 0.14s linear;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .vinyl-wrap {
+    position: absolute;
+    right: -28%;
+    width: 92%;
+    height: 92%;
+    border-radius: 50%;
+    z-index: 1;
+    transition: right 0.95s cubic-bezier(0.22, 1, 0.36, 1), transform 0.95s ease;
+    filter: drop-shadow(0 20px 38px rgba(0, 0, 0, 0.68));
+    pointer-events: none;
+  }
+
+  body.idle .vinyl-wrap,
+  body.paused .vinyl-wrap {
+    right: -13%;
+  }
+
+  .vinyl {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background:
+      radial-gradient(circle at center, transparent 27.5%, rgba(255,255,255,0.09) 28%, transparent 28.8%),
+      radial-gradient(circle at center, transparent 60%, rgba(255,255,255,0.04) 60.4%, transparent 61%),
+      repeating-radial-gradient(circle at center, #0d0d11 0px, #0d0d11 1.8px, #1d1d24 2.8px, #111117 3.8px);
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: spin 16s linear infinite;
+    animation-play-state: running;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    box-shadow: inset 0 0 24px rgba(255, 255, 255, 0.06);
+  }
+
+  .vinyl::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: conic-gradient(
+      from 28deg,
+      transparent 0deg,
+      rgba(255, 255, 255, 0.22) 22deg,
+      rgba(var(--accent-rgb), 0.14) 36deg,
+      transparent 60deg,
+      transparent 182deg,
+      rgba(255, 255, 255, 0.14) 206deg,
+      rgba(var(--accent-rgb), 0.09) 220deg,
+      transparent 244deg
+    );
+    pointer-events: none;
+  }
+
+  body.paused .vinyl,
+  body.idle .vinyl,
+  body.no-spin .vinyl {
+    animation-play-state: paused;
+  }
+
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  .vinyl-label {
+    width: 34%;
+    height: 34%;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 3px solid #15151a;
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.16);
+    position: relative;
+    background: #23202e;
+  }
+
+  .vinyl-label img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0;
+    transition: opacity 0.35s ease;
+  }
+  .vinyl-label img.loaded { opacity: 1; }
+
+  .vinyl-spindle {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 11px;
+    height: 11px;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #555, #0a0a0e);
+    border: 1.5px solid rgba(255, 255, 255, 0.42);
+    z-index: 3;
+  }
+
+  /* Minimalist Anodized-Aluminum Tonearm */
+  .tonearm-mount {
+    position: absolute;
+    top: -4%;
+    right: -38%;
+    width: 44%;
+    height: 62%;
+    z-index: 4;
+    pointer-events: none;
+    transition: opacity 0.5s ease;
+  }
+  body.hide-tonearm .tonearm-mount { opacity: 0; }
+
+  .tonearm-svg {
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    filter: drop-shadow(0 8px 14px rgba(0,0,0,0.65));
+  }
+
+  .tonearm-arm {
+    transform-origin: 78px 24px;
+    transform: rotate(-16deg);
+    transition: transform 1.1s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  body:not(.idle):not(.paused) .tonearm-arm {
+    transform: rotate(3deg);
+  }
+
+  /* Museum-Grade Matte Album Sleeve */
+  .sleeve {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    height: 100%;
+    border-radius: 16px;
+    overflow: hidden;
+    background: linear-gradient(145deg, rgba(255,255,255,0.07), rgba(255,255,255,0.02));
+    box-shadow:
+      0 28px 65px rgba(0, 0, 0, 0.62),
+      0 6px 20px rgba(0, 0, 0, 0.38),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+  }
+
+  .sleeve-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    opacity: 0;
+    transition: opacity 0.35s ease;
+    will-change: transform;
+  }
+  .sleeve-img.loaded { opacity: 1; }
+
+  body:not(.idle):not(.paused):not(.has-motion) .sleeve-img.loaded {
+    animation: kenBurns 20s ease-in-out infinite alternate;
+  }
+  @keyframes kenBurns {
+    0% { transform: scale(1.0) translate(0, 0); }
+    100% { transform: scale(1.045) translate(-0.8%, -0.8%); }
+  }
+
+  .motion-video {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0;
+    transition: opacity 0.8s ease;
+    z-index: 2;
+    pointer-events: none;
+  }
+  .motion-video.playing { opacity: 1; }
+
+  .sleeve-gloss {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    background:
+      linear-gradient(128deg, rgba(255,255,255,0.16) 0%, transparent 28%, transparent 72%, rgba(0,0,0,0.22) 100%),
+      linear-gradient(to right, rgba(255,255,255,0.12) 0px, transparent 4px);
+    pointer-events: none;
+  }
+
+  /* Discreet Hover Transport Controls on Sleeve */
+  .hover-controls {
+    position: absolute;
+    bottom: 14px;
+    left: 50%;
+    transform: translateX(-50%) translateY(8px);
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: 99px;
+    background: rgba(14, 14, 18, 0.62);
+    backdrop-filter: blur(18px);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.28s ease, transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .sleeve:hover .hover-controls {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateX(-50%) translateY(0);
+  }
+  body.idle .hover-controls { display: none; }
+
+  .ctrl-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: none;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.2s ease, transform 0.15s ease, color 0.2s ease;
+  }
+  .ctrl-btn:hover {
+    background: rgba(255, 255, 255, 0.14);
+    color: #ffffff;
+    transform: scale(1.08);
+  }
+  .ctrl-btn:active { transform: scale(0.94); }
+  .ctrl-btn svg { width: 15px; height: 15px; fill: currentColor; }
+
+  .fallback-cover {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(145deg, #1c1929, #2b243c);
+    color: rgba(255, 255, 255, 0.72);
+    gap: 12px;
+    transition: opacity 0.4s ease;
+  }
+  .sleeve.has-cover .fallback-cover { opacity: 0; pointer-events: none; }
+
+  .fallback-ring {
+    width: 40%;
+    height: 40%;
+    border-radius: 50%;
+    border: 1.5px solid rgba(255,255,255,0.22);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.6rem;
+    letter-spacing: 0.1em;
+    font-weight: 300;
+  }
+
+  /* Metadata */
+  .meta {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+  }
+
+  .status-row {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    font-size: 0.68rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.58);
+    font-weight: 600;
+  }
+
+  .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 12px var(--accent);
+    animation: dotPulse 2.4s ease-in-out infinite;
+  }
+  body.paused .dot, body.idle .dot {
+    animation: none;
+    opacity: 0.35;
+    box-shadow: none;
+  }
+  @keyframes dotPulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.35); opacity: 0.6; }
+  }
+
+  .pill-tag {
+    font-size: 0.58rem;
+    letter-spacing: 0.16em;
+    padding: 2px 7px;
+    border-radius: 99px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.72);
+    opacity: 0;
+    transition: opacity 0.4s ease;
+  }
+  .pill-tag.visible { opacity: 1; }
+
+  .title {
+    font-family: var(--lyric-font);
+    font-size: clamp(1.6rem, 2.45vw, 2.75rem);
+    font-weight: var(--lyric-weight);
+    line-height: 1.18;
+    letter-spacing: -0.01em;
+    color: #ffffff;
+    text-shadow: 0 4px 24px rgba(0, 0, 0, 0.32);
+    word-break: break-word;
+  }
+
+  .artist-album {
+    font-size: clamp(0.92rem, 1.12vw, 1.18rem);
+    color: rgba(255, 255, 255, 0.76);
+    font-weight: 400;
+    line-height: 1.42;
+  }
+  .artist-album .sep { opacity: 0.38; margin: 0 7px; }
+  .artist-album .alb {
+    color: rgba(255, 255, 255, 0.52);
+    font-family: "Playfair Display", -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei UI", sans-serif;
+    font-style: italic;
+  }
+
+  /* Interactive Desktop Draggable Progress Bar */
+  .progress-wrap {
+    width: min(25.5vw, 41vh);
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin-top: 0px;
+  }
+
+  .progress-hit {
+    position: relative;
+    width: 100%;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+  }
+  body.idle .progress-hit { cursor: default; pointer-events: none; }
+
+  .progress-track {
+    width: 100%;
+    height: 3px;
+    border-radius: 99px;
+    background: rgba(255, 255, 255, 0.16);
+    position: relative;
+    transition: height 0.18s ease, background 0.18s ease;
+  }
+
+  .progress-hit:hover .progress-track,
+  .progress-hit.dragging .progress-track {
+    height: 5.5px;
+    background: rgba(255, 255, 255, 0.25);
+  }
+
+  .progress-fill {
+    height: 100%;
+    width: 0%;
+    border-radius: 99px;
+    background: linear-gradient(90deg, rgba(var(--accent-rgb), 0.78), #ffffff);
+    position: relative;
+    will-change: width;
+  }
+
+  .progress-fill::after {
+    content: "";
+    position: absolute;
+    right: -4.5px;
+    top: 50%;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #ffffff;
+    transform: translateY(-50%) scale(calc(0.9 + var(--audio-energy) * 0.55));
+    box-shadow: 0 0 14px rgba(255, 255, 255, 0.9);
+    opacity: 0.92;
+    transition: width 0.15s ease, height 0.15s ease;
+  }
+  .progress-hit:hover .progress-fill::after,
+  .progress-hit.dragging .progress-fill::after {
+    width: 12px;
+    height: 12px;
+    right: -6px;
+  }
+  body.idle .progress-fill::after { opacity: 0; }
+
+  .seek-tooltip {
+    position: absolute;
+    bottom: 20px;
+    transform: translateX(-50%);
+    padding: 3px 8px;
+    border-radius: 6px;
+    background: rgba(12, 12, 16, 0.78);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    color: #ffffff;
+    font-size: 0.7rem;
+    font-variant-numeric: tabular-nums;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+  }
+  .progress-hit:hover .seek-tooltip,
+  .progress-hit.dragging .seek-tooltip {
+    opacity: 1;
+  }
+
+  .time-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.72rem;
+    font-variant-numeric: tabular-nums;
+    color: rgba(255, 255, 255, 0.5);
+    letter-spacing: 0.05em;
+  }
+
+  /* 6. Right Column: Graceful Artistic Per-Char Floating Lyrics */
+  .lyrics-col {
+    position: relative;
+    height: 76vh;
+    width: 100%;
+    overflow: hidden;
+    -webkit-mask-image: linear-gradient(
+      to bottom,
+      transparent 0%,
+      rgba(0,0,0,0.35) 9%,
+      #000 22%,
+      #000 76%,
+      rgba(0,0,0,0.3) 90%,
+      transparent 100%
+    );
+    mask-image: linear-gradient(
+      to bottom,
+      transparent 0%,
+      rgba(0,0,0,0.35) 9%,
+      #000 22%,
+      #000 76%,
+      rgba(0,0,0,0.3) 90%,
+      transparent 100%
+    );
+  }
+
+  .lyrics-scroll {
+    position: absolute;
+    inset: 0;
+    padding: 26vh 1.6vw 42vh 0.8vw;
+    display: flex;
+    flex-direction: column;
+    gap: 26px;
+    transition: transform 0.68s cubic-bezier(0.22, 1, 0.36, 1);
+    will-change: transform;
+  }
+
+  .lyrics-scroll.fast-snap {
+    transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .lyric-line {
+    font-family: var(--lyric-font);
+    font-size: calc(clamp(1.58rem, 2.38vw, 2.58rem) * var(--lyric-scale));
+    font-weight: var(--lyric-weight);
+    line-height: 1.44;
+    letter-spacing: 0.015em;
+    color: rgba(255, 255, 255, 0.23);
+    filter: blur(2.0px);
+    transform-origin: left center;
+    transform: scale(0.955);
+    transition:
+      color 0.45s ease,
+      filter 0.45s ease,
+      transform 0.55s cubic-bezier(0.22, 1, 0.36, 1),
+      opacity 0.45s ease;
+    word-break: break-word;
+    cursor: pointer;
+  }
+
+  .lyric-line:hover {
+    filter: blur(0px) !important;
+    color: rgba(255, 255, 255, 0.78) !important;
+  }
+
+  .lyric-line.d1 {
+    color: rgba(255, 255, 255, 0.46);
+    filter: blur(0.55px);
+    transform: scale(0.985);
+  }
+
+  .lyric-line.d2 {
+    color: rgba(255, 255, 255, 0.28);
+    filter: blur(1.3px);
+    transform: scale(0.968);
+  }
+
+  .lyric-line.past {
+    color: rgba(255, 255, 255, 0.25);
+    filter: blur(1.4px);
+  }
+
+  .lyric-line.active {
+    color: rgba(255, 255, 255, 0.36);
+    filter: blur(0px);
+    transform: scale(1.028);
+  }
+
+  /* Per-Character / Per-Word Floating & Luminous Sweep (safe padding for Serif swashes!) */
+  .lyric-line .tok {
+    display: inline-block;
+    white-space: pre-wrap;
+    padding: 0.04em 0.03em;
+    margin: -0.04em -0.03em;
+    will-change: transform, background-position;
+    transform: translateY(0px) scale(1);
+    transition: transform 0.26s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .lyric-line.active .tok {
+    background-image: linear-gradient(
+      90deg,
+      #ffffff 0%,
+      #ffffff var(--fill, 0%),
+      rgba(255, 255, 255, 0.36) calc(var(--fill, 0%) + 12%),
+      rgba(255, 255, 255, 0.36) 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    transform: translateY(var(--lift, 0px)) scale(var(--sc, 1));
+    filter: drop-shadow(0 0 var(--glow, 0px) rgba(255, 255, 255, 0.55));
+  }
+
+  .lyric-line.active .tok.sung {
+    background-image: none;
+    -webkit-background-clip: initial;
+    background-clip: initial;
+    color: #ffffff;
+    transform: translateY(-0.8px) scale(1);
+    filter: drop-shadow(0 3px 16px rgba(0, 0, 0, 0.28));
+  }
+
+  /* Keep translation clean sans-serif so artistic main lyric + crisp subtitle pair like a book */
+  .lyric-trans {
+    display: block;
+    margin-top: 6px;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", "PingFang SC", "Microsoft YaHei UI", sans-serif;
+    font-size: 0.48em;
+    font-weight: 400;
+    color: rgba(255, 255, 255, 0.52);
+    letter-spacing: 0.025em;
+    line-height: 1.4;
+  }
+  .lyric-line.active .lyric-trans {
+    color: rgba(255, 255, 255, 0.78);
+  }
+  body.hide-trans .lyric-trans { display: none; }
+
+  /* Breathing Interlude Dots */
+  .interlude-dots {
+    display: none;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 2px;
+    margin-bottom: -6px;
+  }
+  .interlude-dots.visible { display: flex; }
+
+  .id-dot {
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.25);
+    transform: scale(0.85);
+    transition: background 0.35s ease, transform 0.4s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.35s ease;
+  }
+  .id-dot.lit {
+    background: #ffffff;
+    transform: scale(1.15);
+    box-shadow: 0 0 16px rgba(255, 255, 255, 0.65);
+  }
+
+  .lyrics-empty {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 10px;
+    font-family: var(--lyric-font);
+    color: rgba(255, 255, 255, 0.46);
+    font-size: 1.25rem;
+    font-weight: 500;
+    letter-spacing: 0.03em;
+  }
+</style>
+</head>
+<body class="idle">
+  <canvas id="bgCanvas" width="320" height="180"></canvas>
+  <img id="bgVeil" class="bg-cover-veil" alt="">
+  <canvas id="dustCanvas"></canvas>
+  <div id="grain" class="grain"></div>
+  <div class="vignette"></div>
+
+  <aside id="clockWidget" class="clock-widget">
+    <div id="clockTime" class="clock-time">--:--</div>
+    <div id="clockDate" class="clock-date">---</div>
+  </aside>
+
+  <main class="stage">
+    <section class="left-col">
+      <div class="deck">
+        <div class="echo-rings"></div>
+        <div class="aura"></div>
+        <div class="vinyl-wrap">
+          <div class="vinyl">
+            <div class="vinyl-label">
+              <img id="labelImg" alt="">
+              <div class="vinyl-spindle"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tonearm-mount">
+          <svg class="tonearm-svg" viewBox="0 0 110 155" fill="none">
+            <defs>
+              <linearGradient id="armMetal" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#e8e8ee" stop-opacity="0.95"/>
+                <stop offset="50%" stop-color="#989aa6" stop-opacity="0.9"/>
+                <stop offset="100%" stop-color="#4e505a" stop-opacity="0.95"/>
+              </linearGradient>
+              <radialGradient id="pivotGrad" cx="35%" cy="35%" r="65%">
+                <stop offset="0%" stop-color="#d8d8e2"/>
+                <stop offset="60%" stop-color="#4a4c57"/>
+                <stop offset="100%" stop-color="#191a20"/>
+              </radialGradient>
+            </defs>
+            <circle cx="78" cy="24" r="17" fill="url(#pivotGrad)" stroke="rgba(255,255,255,0.22)" stroke-width="1"/>
+            <circle cx="78" cy="24" r="6" fill="#141418" stroke="rgba(255,255,255,0.28)" stroke-width="1"/>
+            <g class="tonearm-arm">
+              <rect x="74" y="4" width="8" height="14" rx="2.5" fill="url(#armMetal)"/>
+              <path d="M 78 24 L 78 106 Q 78 120 65 130 L 54 139" stroke="url(#armMetal)" stroke-width="3.4" stroke-linecap="round" fill="none"/>
+              <g transform="translate(50, 141) rotate(38)">
+                <rect x="-5" y="-9" width="10" height="17" rx="2" fill="#23242b" stroke="rgba(255,255,255,0.3)" stroke-width="0.9"/>
+                <rect x="-2.5" y="5" width="5" height="3" rx="0.8" fill="var(--accent)"/>
+              </g>
+            </g>
+          </svg>
+        </div>
+
+        <div id="sleeve" class="sleeve">
+          <div class="fallback-cover">
+            <div class="fallback-ring">LP</div>
+            <div style="font-size:0.72rem;letter-spacing:0.22em;opacity:0.65;">WAITING FOR MUSIC</div>
+          </div>
+          <img id="coverImg" class="sleeve-img" alt="">
+          <video id="motionVideo" class="motion-video" autoplay loop muted playsinline></video>
+          <div class="sleeve-gloss"></div>
+
+          <div class="hover-controls">
+            <button class="ctrl-btn" id="btnPrev" title="上一首">
+              <svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+            </button>
+            <button class="ctrl-btn" id="btnPlay" title="播放 / 暂停">
+              <svg id="iconPause" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+              <svg id="iconPlay" viewBox="0 0 24 24" style="display:none;"><path d="M8 5v14l11-7z"/></svg>
+            </button>
+            <button class="ctrl-btn" id="btnNext" title="下一首">
+              <svg viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="meta">
+        <div class="status-row">
+          <span class="dot"></span>
+          <span id="statusText">STANDBY</span>
+          <span id="badgeTag" class="pill-tag"></span>
+        </div>
+        <h1 id="titleText" class="title">等待播放音乐</h1>
+        <div id="artistAlbum" class="artist-album">打开 MyGo Music 播放任意歌曲</div>
+      </div>
+
+      <div class="progress-wrap">
+        <div id="progressHit" class="progress-hit">
+          <div class="progress-track">
+            <div id="progressFill" class="progress-fill"></div>
+          </div>
+          <div id="seekTooltip" class="seek-tooltip">0:00</div>
+        </div>
+        <div class="time-row">
+          <span id="curTime">0:00</span>
+          <span id="durTime">0:00</span>
+        </div>
+      </div>
+    </section>
+
+    <section id="lyricsCol" class="lyrics-col">
+      <div id="lyricsScroll" class="lyrics-scroll">
+        <div class="lyrics-empty">音乐响起后，歌词将在此同步呈现</div>
+      </div>
+    </section>
+  </main>
+
+  <canvas id="colorCanvas" width="32" height="32" style="display:none;"></canvas>
+
+<script>
+  const BRIDGE = 'http://127.0.0.1:28973';
+  const bgCanvas = document.getElementById('bgCanvas');
+  const bgCtx = bgCanvas.getContext('2d');
+  const bgVeil = document.getElementById('bgVeil');
+  const dustCanvas = document.getElementById('dustCanvas');
+  const dustCtx = dustCanvas.getContext('2d');
+  const sleeve = document.getElementById('sleeve');
+  const coverImg = document.getElementById('coverImg');
+  const labelImg = document.getElementById('labelImg');
+  const motionVideo = document.getElementById('motionVideo');
+  const titleText = document.getElementById('titleText');
+  const artistAlbum = document.getElementById('artistAlbum');
+  const statusText = document.getElementById('statusText');
+  const badgeTag = document.getElementById('badgeTag');
+  const progressHit = document.getElementById('progressHit');
+  const progressFill = document.getElementById('progressFill');
+  const seekTooltip = document.getElementById('seekTooltip');
+  const curTimeEl = document.getElementById('curTime');
+  const durTimeEl = document.getElementById('durTime');
+  const lyricsCol = document.getElementById('lyricsCol');
+  const lyricsScroll = document.getElementById('lyricsScroll');
+  const grainEl = document.getElementById('grain');
+  const clockWidget = document.getElementById('clockWidget');
+  const clockTime = document.getElementById('clockTime');
+  const clockDate = document.getElementById('clockDate');
+  const colorCanvas = document.getElementById('colorCanvas');
+  const colorCtx = colorCanvas.getContext('2d', { willReadFrequently: true });
+  const iconPause = document.getElementById('iconPause');
+  const iconPlay = document.getElementById('iconPlay');
+
+  let cfg = {
+    enableMotionCover: true,
+    showDust: true,
+    audioReactive: true,
+    showClock: true
+  };
+
+  let currentTrackKey = '';
+  let smtcCoverLoadedKey = '';
+  let bridgeConnected = false;
+  let audioEnergy = 0;
+  let currentMeta = { title: '', artist: '', album: '' };
+  let badgeFlags = { motion: false, yrc: false };
+  let coverUpgraded = false;
+  let isDragging = false;
+  let dragRatio = 0;
+  let localSeekLockUntil = 0;
+
+  let state = {
+    active: false,
+    playing: false,
+    position: 0,
+    duration: 0,
+    lastSyncPerf: performance.now()
+  };
+
+  let parsedLyrics = [];
+  let activeLineIdx = -1;
+  let interludeEl = null;
+
+  /* =========================================================
+     1. LIVING FLUID AURORA MESH
+     ========================================================= */
+  let curPalette = [
+    [22, 18, 34],
+    [68, 52, 98],
+    [130, 88, 128],
+    [42, 74, 102],
+    [186, 148, 118]
+  ];
+  let tgtPalette = curPalette.map(c => [...c]);
+
+  const orbs = [
+    { bx: 0.22, by: 0.28, rx: 0.20, ry: 0.16, sx: 0.22, sy: 0.17, ph: 0.0, rad: 0.56 },
+    { bx: 0.78, by: 0.30, rx: 0.18, ry: 0.22, sx: 0.16, sy: 0.23, ph: 1.7, rad: 0.58 },
+    { bx: 0.65, by: 0.75, rx: 0.22, ry: 0.16, sx: 0.19, sy: 0.15, ph: 3.1, rad: 0.54 },
+    { bx: 0.28, by: 0.72, rx: 0.17, ry: 0.20, sx: 0.14, sy: 0.21, ph: 4.5, rad: 0.50 }
+  ];
+
+  function rgbToHsl(r, g, b) {
+    r /= 255; g /= 255; b /= 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    let h = 0, s = 0, l = (max + min) / 2;
+    if (max !== min) {
+      const d = max - min;
+      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      switch (max) {
+        case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+        case g: h = (b - r) / d + 2; break;
+        case b: h = (r - g) / d + 4; break;
+      }
+      h /= 6;
+    }
+    return [h, s, l];
+  }
+
+  function hslToRgb(h, s, l) {
+    let r, g, b;
+    if (s === 0) { r = g = b = l; }
+    else {
+      const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+      const p = 2 * l - q;
+      const hue2rgb = (t) => {
+        if (t < 0) t += 1;
+        if (t > 1) t -= 1;
+        if (t < 1/6) return p + (q - p) * 6 * t;
+        if (t < 1/2) return q;
+        if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+        return p;
+      };
+      r = hue2rgb(h + 1/3); g = hue2rgb(h); b = hue2rgb(h - 1/3);
+    }
+    return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+  }
+
+  function tuneRichColor(r, g, b, minL, maxL, boostS, hueShift = 0) {
+    let [h, s, l] = rgbToHsl(r, g, b);
+    h = (h + hueShift + 1) % 1;
+    s = Math.min(0.86, Math.max(0.22, s * boostS));
+    l = Math.min(maxL, Math.max(minL, l));
+    return hslToRgb(h, s, l);
+  }
+
+  function extractPalette(img) {
+    try {
+      colorCtx.drawImage(img, 0, 0, 32, 32);
+      const data = colorCtx.getImageData(0, 0, 32, 32).data;
+      const quads = [[], [], [], []];
+      const all = [];
+      for (let y = 0; y < 32; y += 2) {
+        for (let x = 0; x < 32; x += 2) {
+          const i = (y * 32 + x) * 4;
+          const r = data[i], g = data[i + 1], b = data[i + 2];
+          const [h, s, l] = rgbToHsl(r, g, b);
+          const item = { r, g, b, h, s, l };
+          const qIdx = (y < 16 ? 0 : 2) + (x < 16 ? 0 : 1);
+          quads[qIdx].push(item);
+          all.push(item);
+        }
+      }
+      const pickQuad = (arr) => {
+        arr.sort((a, b) => (b.s * 0.75 + (0.5 - Math.abs(b.l - 0.42)) * 0.25) - (a.s * 0.75 + (0.5 - Math.abs(a.l - 0.42)) * 0.25));
+        return arr[Math.floor(arr.length * 0.14)] || { r: 60, g: 50, b: 85 };
+      };
+      const q0 = pickQuad(quads[0]);
+      const q1 = pickQuad(quads[1]);
+      const q2 = pickQuad(quads[2]);
+      const q3 = pickQuad(quads[3]);
+
+      all.sort((a, b) => a.l - b.l);
+      const deep = all[Math.floor(all.length * 0.1)] || q0;
+      const accentRaw = [...all].sort((a, b) => (b.s * 0.65 + b.l * 0.35) - (a.s * 0.65 + a.l * 0.35))[Math.floor(all.length * 0.08)] || q1;
+
+      const baseC = tuneRichColor(deep.r, deep.g, deep.b, 0.04, 0.09, 1.2, -0.05);
+      const o1 = tuneRichColor(q0.r, q0.g, q0.b, 0.20, 0.38, 1.35, 0.0);
+      const o2 = tuneRichColor(q1.r, q1.g, q1.b, 0.22, 0.42, 1.42, 0.065);
+      const o3 = tuneRichColor(q2.r, q2.g, q2.b, 0.14, 0.30, 1.38, -0.085);
+      const o4 = tuneRichColor(q3.r, q3.g, q3.b, 0.25, 0.44, 1.35, 0.03);
+      const acc = tuneRichColor(accentRaw.r, accentRaw.g, accentRaw.b, 0.70, 0.85, 1.15, 0.0);
+
+      tgtPalette = [baseC, o1, o2, o3, o4];
+      document.documentElement.style.setProperty('--accent', `rgb(${acc[0]}, ${acc[1]}, ${acc[2]})`);
+      document.documentElement.style.setProperty('--accent-rgb', `${acc[0]}, ${acc[1]}, ${acc[2]}`);
+      document.documentElement.style.setProperty('--glow-rgb', `${o2[0]}, ${o2[1]}, ${o2[2]}`);
+    } catch (e) {}
+  }
+
+  function renderFluidMesh(tSec) {
+    for (let i = 0; i < 5; i++) {
+      for (let c = 0; c < 3; c++) {
+        curPalette[i][c] += (tgtPalette[i][c] - curPalette[i][c]) * 0.032;
+      }
+    }
+    const w = bgCanvas.width, h = bgCanvas.height;
+    const b = curPalette[0];
+    bgCtx.globalCompositeOperation = 'source-over';
+    bgCtx.fillStyle = `rgb(${b[0]|0}, ${b[1]|0}, ${b[2]|0})`;
+    bgCtx.fillRect(0, 0, w, h);
+
+    const energyBoost = cfg.audioReactive ? audioEnergy * 0.14 : 0;
+    bgCtx.globalCompositeOperation = 'screen';
+
+    for (let i = 0; i < orbs.length; i++) {
+      const o = orbs[i];
+      const col = curPalette[i + 1];
+      const cx = (o.bx + Math.sin(tSec * o.sx + o.ph) * o.rx) * w;
+      const cy = (o.by + Math.cos(tSec * o.sy + o.ph * 1.3) * o.ry) * h;
+      const rad = (o.rad + energyBoost) * Math.max(w, h);
+      const g = bgCtx.createRadialGradient(cx, cy, 0, cx, cy, rad);
+      const alpha = Math.min(0.85, 0.52 + energyBoost * 0.9);
+      g.addColorStop(0, `rgba(${col[0]|0}, ${col[1]|0}, ${col[2]|0}, ${alpha.toFixed(3)})`);
+      g.addColorStop(0.55, `rgba(${col[0]|0}, ${col[1]|0}, ${col[2]|0}, ${(alpha * 0.36).toFixed(3)})`);
+      g.addColorStop(1, 'rgba(0,0,0,0)');
+      bgCtx.fillStyle = g;
+      bgCtx.fillRect(0, 0, w, h);
+    }
+  }
+
+  /* =========================================================
+     2. FLOATING BOKEH DUST
+     ========================================================= */
+  let dustParticles = [];
+  function initDust() {
+    dustCanvas.width = window.innerWidth;
+    dustCanvas.height = window.innerHeight;
+    dustParticles = Array.from({ length: 36 }, () => ({
+      x: Math.random() * dustCanvas.width,
+      y: Math.random() * dustCanvas.height,
+      r: 0.8 + Math.random() * 2.4,
+      vx: (Math.random() - 0.5) * 0.18,
+      vy: -0.08 - Math.random() * 0.24,
+      phase: Math.random() * Math.PI * 2,
+      baseAlpha: 0.08 + Math.random() * 0.24
+    }));
+  }
+  window.addEventListener('resize', initDust);
+  initDust();
+
+  function renderDust(tSec) {
+    dustCtx.clearRect(0, 0, dustCanvas.width, dustCanvas.height);
+    if (!cfg.showDust) return;
+    const acc = curPalette[4];
+    const beatBoost = cfg.audioReactive ? audioEnergy * 0.22 : 0;
+    for (const p of dustParticles) {
+      const speedMul = state.playing ? 1.0 : 0.35;
+      p.x += (p.vx + Math.sin(tSec * 0.4 + p.phase) * 0.12) * speedMul;
+      p.y += p.vy * speedMul;
+      if (p.y < -10) { p.y = dustCanvas.height + 10; p.x = Math.random() * dustCanvas.width; }
+      if (p.x < -10) p.x = dustCanvas.width + 10;
+      if (p.x > dustCanvas.width + 10) p.x = -10;
+
+      const twinkle = 0.6 + 0.4 * Math.sin(tSec * 1.1 + p.phase);
+      const a = Math.min(0.65, (p.baseAlpha + beatBoost) * twinkle);
+      dustCtx.beginPath();
+      dustCtx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      dustCtx.fillStyle = `rgba(${Math.min(255, (acc[0]+65)|0)}, ${Math.min(255, (acc[1]+65)|0)}, ${Math.min(255, (acc[2]+65)|0)}, ${a.toFixed(3)})`;
+      dustCtx.fill();
+    }
+  }
+
+  /* =========================================================
+     3. EDITORIAL CLOCK
+     ========================================================= */
+  const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+  const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+  function updateClock() {
+    const d = new Date();
+    clockTime.textContent = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    clockDate.textContent = `${DAYS[d.getDay()]} · ${MONTHS[d.getMonth()]} ${d.getDate()}`;
+  }
+  updateClock();
+  setInterval(updateClock, 15000);
+
+  /* =========================================================
+     4. INTERACTIVE SEEKING & TRANSPORT CONTROLS
+     ========================================================= */
+  async function seekTo(targetSec) {
+    if (!state.active || !state.duration) return;
+    const clamped = Math.max(0, Math.min(state.duration, targetSec));
+    // 0ms instant optimistic update on desktop!
+    state.position = clamped;
+    state.lastSyncPerf = performance.now();
+    localSeekLockUntil = performance.now() + 3500;
+    lyricsScroll.classList.add('fast-snap');
+    updateLyrics60fps(clamped, true);
+    setTimeout(() => lyricsScroll.classList.remove('fast-snap'), 360);
+    try {
+      await fetch(`${BRIDGE}/seek?pos=${clamped.toFixed(2)}`);
+    } catch (e) {}
+  }
+
+  function updateDragVisual(clientX) {
+    const rect = progressHit.getBoundingClientRect();
+    dragRatio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    const sec = dragRatio * (state.duration || 0);
+    seekTooltip.style.left = `${(dragRatio * 100).toFixed(2)}%`;
+    seekTooltip.textContent = fmtTime(sec);
+    if (isDragging) {
+      progressFill.style.width = `${(dragRatio * 100).toFixed(2)}%`;
+      curTimeEl.textContent = fmtTime(sec);
+    }
+  }
+
+  progressHit.addEventListener('mousemove', (e) => updateDragVisual(e.clientX));
+  progressHit.addEventListener('mousedown', (e) => {
+    if (!state.active || !state.duration) return;
+    isDragging = true;
+    progressHit.classList.add('dragging');
+    updateDragVisual(e.clientX);
+    e.preventDefault();
+  });
+  window.addEventListener('mousemove', (e) => {
+    if (isDragging) updateDragVisual(e.clientX);
+  });
+  window.addEventListener('mouseup', () => {
+    if (!isDragging) return;
+    isDragging = false;
+    progressHit.classList.remove('dragging');
+    seekTo(dragRatio * (state.duration || 0));
+  });
+
+  async function sendControl(cmd) {
+    try { await fetch(`${BRIDGE}/control?cmd=${cmd}`); } catch (e) {}
+  }
+  document.getElementById('btnPrev').addEventListener('click', () => sendControl('prev'));
+  document.getElementById('btnPlay').addEventListener('click', () => {
+    state.playing = !state.playing;
+    if (state.playing) state.lastSyncPerf = performance.now();
+    sendControl('toggle');
+  });
+  document.getElementById('btnNext').addEventListener('click', () => sendControl('next'));
+
+  /* =========================================================
+     5. YRC + SMART WEIGHTED LRC LYRICS
+     ========================================================= */
+  function fmtTime(sec) {
+    if (!sec || sec < 0 || !isFinite(sec)) return '0:00';
+    const s = Math.floor(sec);
+    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+  }
+
+  function tokenizeLineText(text) {
+    const tokens = [];
+    const re = /([A-Za-z0-9']+['’\-]?[A-Za-z0-9']*\s*)|([^\sA-Za-z0-9]\s*)|(\s+)/g;
+    let m;
+    while ((m = re.exec(text)) !== null) {
+      if (m[0]) tokens.push(m[0]);
+    }
+    return tokens.length ? tokens : [text];
+  }
+
+  function parseYrc(yrcStr) {
+    if (!yrcStr) return [];
+    const lines = [];
+    const lineRe = /^\[(\d+),(\d+)\](.*)$/;
+    const tokRe = /\((\d+),(\d+),\d+\)([^\(]*)/g;
+    for (const raw of yrcStr.split(/\r?\n/)) {
+      const trimmed = raw.trim();
+      if (!trimmed || trimmed.startsWith('{')) continue;
+      const lm = lineRe.exec(trimmed);
+      if (!lm) continue;
+      const lineStart = parseInt(lm[1], 10) / 1000;
+      const lineDur = parseInt(lm[2], 10) / 1000;
+      const body = lm[3];
+      const tokens = [];
+      let tm;
+      tokRe.lastIndex = 0;
+      while ((tm = tokRe.exec(body)) !== null) {
+        const ts = parseInt(tm[1], 10) / 1000;
+        const td = Math.max(0.06, parseInt(tm[2], 10) / 1000);
+        const txt = tm[3];
+        if (txt) tokens.push({ text: txt, start: ts, end: ts + td });
+      }
+      const fullText = tokens.map(t => t.text).join('').trim();
+      if (tokens.length && fullText) {
+        lines.push({ time: lineStart, endTime: lineStart + Math.max(0.4, lineDur), tokens });
+      }
+    }
+    lines.sort((a, b) => a.time - b.time);
+    return lines;
+  }
+
+  function parseLrcPlainLines(lrcStr) {
+    if (!lrcStr) return [];
+    const list = [];
+    const re = /\[(\d{1,3}):(\d{2})(?:\.(\d{1,3}))?\]/g;
+    for (const raw of lrcStr.split(/\r?\n/)) {
+      let m;
+      const times = [];
+      re.lastIndex = 0;
+      while ((m = re.exec(raw)) !== null) {
+        const t = parseInt(m[1], 10) * 60 + parseInt(m[2], 10) + parseInt((m[3] || '0').padEnd(3, '0').slice(0, 3), 10) / 1000;
+        times.push(t);
+      }
+      const text = raw.replace(/\[\d{1,3}:\d{2}(?:\.\d{1,3})?\]/g, '').trim();
+      if (times.length && text) {
+        for (const t of times) list.push({ time: t, text });
+      }
+    }
+    list.sort((a, b) => a.time - b.time);
+    return list;
+  }
+
+  function buildSynthesizedTokens(lrcLines, trackDur) {
+    return lrcLines.map((line, i) => {
+      const nextTime = i + 1 < lrcLines.length ? lrcLines[i + 1].time : Math.max(line.time + 4.5, trackDur || line.time + 4.5);
+      const span = Math.min(6.8, Math.max(0.9, (nextTime - line.time) * 0.88));
+      const rawToks = tokenizeLineText(line.text);
+      const weights = rawToks.map(t => {
+        const clean = t.trim();
+        if (!clean) return 0.25;
+        if (/^[.,!?;:，。！？；：、]$/.test(clean)) return 0.35;
+        if (/^[A-Za-z0-9']+$/.test(clean)) return Math.max(1.2, Math.min(3.5, clean.length * 0.45));
+        return 1.0;
+      });
+      const totalW = weights.reduce((a, b) => a + b, 0) || 1;
+      let cursor = line.time;
+      const tokens = rawToks.map((txt, idx) => {
+        const dur = (weights[idx] / totalW) * span;
+        const tok = { text: txt, start: cursor, end: cursor + Math.max(0.08, dur) };
+        cursor += dur;
+        return tok;
+      });
+      return { time: line.time, endTime: line.time + span, tokens };
+    });
+  }
+
+  function attachTranslations(lines, tlyricStr) {
+    const trans = parseLrcPlainLines(tlyricStr);
+    if (!trans.length) return;
+    for (const line of lines) {
+      const hit = trans.find(x => Math.abs(x.time - line.time) < 0.75);
+      if (hit) {
+        const mainText = line.tokens.map(t => t.text).join('').trim();
+        if (hit.text && hit.text !== mainText) line.trans = hit.text;
+      }
+    }
+  }
+
+  function renderLyricsDOM(lines, plainText) {
+    lyricsScroll.innerHTML = '';
+    lyricsScroll.style.transform = 'translateY(0px)';
+    activeLineIdx = -1;
+    interludeEl = null;
+
+    if (lines.length) {
+      interludeEl = document.createElement('div');
+      interludeEl.className = 'interlude-dots';
+      interludeEl.innerHTML = '<span class="id-dot"></span><span class="id-dot"></span><span class="id-dot"></span>';
+      lyricsScroll.appendChild(interludeEl);
+
+      lines.forEach((line, idx) => {
+        const div = document.createElement('div');
+        div.className = 'lyric-line';
+        div.dataset.idx = idx;
+        div.addEventListener('click', () => seekTo(line.time));
+        for (const tok of line.tokens) {
+          const sp = document.createElement('span');
+          sp.className = 'tok';
+          sp.textContent = tok.text;
+          div.appendChild(sp);
+          tok.el = sp;
+        }
+        if (line.trans) {
+          const tr = document.createElement('span');
+          tr.className = 'lyric-trans';
+          tr.textContent = line.trans;
+          div.appendChild(tr);
+        }
+        line.lineEl = div;
+        lyricsScroll.appendChild(div);
+      });
+    } else if (plainText) {
+      plainText.split(/\r?\n/).filter(Boolean).forEach(line => {
+        const div = document.createElement('div');
+        div.className = 'lyric-line d1';
+        div.style.filter = 'none';
+        div.textContent = line;
+        lyricsScroll.appendChild(div);
+      });
+    } else {
+      lyricsScroll.innerHTML = '<div class="lyrics-empty">纯音乐或暂无同步歌词 · 静享黑胶旋律</div>';
+    }
+  }
+
+  function updateBadge() {
+    if (badgeFlags.motion) {
+      badgeTag.textContent = 'APPLE MOTION';
+      badgeTag.classList.add('visible');
+    } else if (badgeFlags.yrc) {
+      badgeTag.textContent = 'WORD SYNC';
+      badgeTag.classList.add('visible');
+    } else {
+      badgeTag.classList.remove('visible');
+    }
+  }
+
+  async function loadLyrics(title, artist, album, duration, reqKey) {
+    lyricsScroll.innerHTML = '<div class="lyrics-empty" style="opacity:0.42;">正在匹配逐字歌词...</div>';
+    parsedLyrics = [];
+    activeLineIdx = -1;
+    badgeFlags.yrc = false;
+    updateBadge();
+    try {
+      const url = `${BRIDGE}/lyrics?title=${encodeURIComponent(title)}&artist=${encodeURIComponent(artist)}&album=${encodeURIComponent(album || '')}&duration=${duration || 0}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      if (reqKey !== currentTrackKey) return;
+
+      if (data && data.yrc) {
+        parsedLyrics = parseYrc(data.yrc);
+        if (parsedLyrics.length) {
+          badgeFlags.yrc = true;
+          attachTranslations(parsedLyrics, data.tlyric || '');
+          renderLyricsDOM(parsedLyrics, '');
+          updateBadge();
+          return;
+        }
+      }
+      if (data && data.synced) {
+        const raw = parseLrcPlainLines(data.synced);
+        parsedLyrics = buildSynthesizedTokens(raw, duration);
+        attachTranslations(parsedLyrics, data.tlyric || '');
+        renderLyricsDOM(parsedLyrics, '');
+      } else if (data && data.plain) {
+        renderLyricsDOM([], data.plain);
+      } else {
+        renderLyricsDOM([], '');
+      }
+    } catch (e) {
+      if (reqKey !== currentTrackKey) return;
+      renderLyricsDOM([], '');
+    }
+  }
+
+  function updateLyrics60fps(posSec, forceScroll = false) {
+    if (!parsedLyrics.length) return;
+
+    let idx = -1;
+    for (let i = 0; i < parsedLyrics.length; i++) {
+      if (posSec + 0.14 >= parsedLyrics[i].time) idx = i;
+      else break;
+    }
+
+    if (interludeEl) {
+      const firstT = parsedLyrics[0].time;
+      if (idx === -1 && firstT > 2.0) {
+        interludeEl.classList.add('visible');
+        const ratio = Math.min(1, Math.max(0, posSec / firstT));
+        const dots = interludeEl.children;
+        dots[0].classList.toggle('lit', ratio >= 0.12);
+        dots[1].classList.toggle('lit', ratio >= 0.45);
+        dots[2].classList.toggle('lit', ratio >= 0.78);
+      } else {
+        interludeEl.classList.remove('visible');
+      }
+    }
+
+    if (idx !== activeLineIdx || forceScroll) {
+      const jump = Math.abs(idx - activeLineIdx) > 2;
+      activeLineIdx = idx;
+      if (jump) {
+        lyricsScroll.classList.add('fast-snap');
+        setTimeout(() => lyricsScroll.classList.remove('fast-snap'), 360);
+      }
+      for (let i = 0; i < parsedLyrics.length; i++) {
+        const line = parsedLyrics[i];
+        const el = line.lineEl;
+        el.classList.remove('active', 'd1', 'd2', 'past');
+        if (i === idx) {
+          el.classList.add('active');
+        } else {
+          for (const tok of line.tokens) {
+            if (tok.el) {
+              tok.el.classList.remove('sung');
+              tok.el.style.removeProperty('--fill');
+              tok.el.style.removeProperty('--lift');
+              tok.el.style.removeProperty('--sc');
+              tok.el.style.removeProperty('--glow');
+            }
+          }
+          const dist = idx === -1 ? i + 1 : Math.abs(i - idx);
+          if (dist === 1) el.classList.add('d1');
+          else if (dist === 2) el.classList.add('d2');
+          if (idx >= 0 && i < idx) el.classList.add('past');
+        }
+      }
+
+      if (idx >= 0 && parsedLyrics[idx].lineEl) {
+        const targetEl = parsedLyrics[idx].lineEl;
+        const colH = lyricsCol.clientHeight;
+        const offset = targetEl.offsetTop - colH * 0.34 + targetEl.offsetHeight * 0.5;
+        lyricsScroll.style.transform = `translateY(${-Math.max(0, offset)}px)`;
+      } else {
+        lyricsScroll.style.transform = 'translateY(0px)';
+      }
+    }
+
+    if (idx >= 0) {
+      const activeLine = parsedLyrics[idx];
+      for (const tok of activeLine.tokens) {
+        const el = tok.el;
+        if (!el) continue;
+        if (posSec >= tok.end + 0.08) {
+          if (!el.classList.contains('sung')) {
+            el.classList.add('sung');
+            el.style.setProperty('--fill', '100%');
+            el.style.setProperty('--lift', '-0.8px');
+            el.style.setProperty('--sc', '1');
+            el.style.setProperty('--glow', '0px');
+          }
+        } else if (posSec >= tok.start - 0.05) {
+          el.classList.remove('sung');
+          const dur = Math.max(0.08, tok.end - tok.start);
+          const p = Math.min(1, Math.max(0, (posSec - tok.start) / dur));
+          const arch = Math.sin(p * Math.PI);
+          el.style.setProperty('--fill', `${(p * 100).toFixed(1)}%`);
+          el.style.setProperty('--lift', `${(-(1.0 + arch * 3.4)).toFixed(2)}px`);
+          el.style.setProperty('--sc', (1 + arch * 0.042).toFixed(3));
+          el.style.setProperty('--glow', `${(arch * 11).toFixed(1)}px`);
+        } else {
+          el.classList.remove('sung');
+          el.style.setProperty('--fill', '0%');
+          el.style.setProperty('--lift', '0px');
+          el.style.setProperty('--sc', '1');
+          el.style.setProperty('--glow', '0px');
+        }
+      }
+    }
+  }
+
+  /* =========================================================
+     6. FAST COVER + APPLE MUSIC MOTION COVER PIPELINE
+     ========================================================= */
+  function clearMotionVideo() {
+    badgeFlags.motion = false;
+    document.body.classList.remove('has-motion');
+    motionVideo.classList.remove('playing');
+    motionVideo.pause();
+    motionVideo.removeAttribute('src');
+    motionVideo.load();
+    updateBadge();
+  }
+
+  function applyStaticCover(src, extractColors = true, expectedKey = '', retryOnErr = false) {
+    if (!src) return;
+    const loader = new Image();
+    if (extractColors) loader.crossOrigin = 'anonymous';
+    loader.onload = () => {
+      if (expectedKey && expectedKey !== currentTrackKey) return;
+      if (extractColors) extractPalette(loader);
+      coverImg.src = src;
+      coverImg.classList.add('loaded');
+      labelImg.src = src;
+      labelImg.classList.add('loaded');
+      bgVeil.src = src;
+      bgVeil.style.opacity = '0.32';
+      sleeve.classList.add('has-cover');
+    };
+    if (retryOnErr) {
+      loader.onerror = () => {
+        if (expectedKey === currentTrackKey) smtcCoverLoadedKey = '';
+      };
+    }
+    loader.src = src;
+  }
+
+  async function loadEnhancedArtwork(title, artist, album, reqKey) {
+    try {
+      const url = `${BRIDGE}/artwork?title=${encodeURIComponent(title)}&artist=${encodeURIComponent(artist)}&album=${encodeURIComponent(album || '')}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      if (reqKey !== currentTrackKey || !data) return;
+
+      if ((!currentMeta.artist && data.artist) || (!currentMeta.album && data.album)) {
+        applyTrackMeta(
+          currentMeta.title,
+          currentMeta.artist || data.artist,
+          currentMeta.album || data.album
+        );
+      }
+
+      if (data.hiResCover) {
+        coverUpgraded = true;
+        applyStaticCover(data.hiResCover, false, reqKey);
+      }
+
+      if (cfg.enableMotionCover && data.motionVideo) {
+        motionVideo.oncanplay = () => {
+          if (reqKey !== currentTrackKey) return;
+          motionVideo.classList.add('playing');
+          document.body.classList.add('has-motion');
+          badgeFlags.motion = true;
+          updateBadge();
+          if (state.playing) motionVideo.play().catch(() => {});
+          else motionVideo.pause();
+        };
+        motionVideo.onerror = () => clearMotionVideo();
+        motionVideo.src = data.motionVideo;
+        motionVideo.load();
+      }
+    } catch (e) {}
+  }
+
+  function applyTrackMeta(title, artist, album) {
+    currentMeta = { title: title || '', artist: artist || '', album: album || '' };
+    titleText.textContent = title || 'Unknown Track';
+    artistAlbum.innerHTML = '';
+    const aSpan = document.createElement('span');
+    aSpan.textContent = artist || '—';
+    artistAlbum.appendChild(aSpan);
+    if (album) {
+      const sep = document.createElement('span');
+      sep.className = 'sep';
+      sep.textContent = '·';
+      const alSpan = document.createElement('span');
+      alSpan.className = 'alb';
+      alSpan.textContent = album;
+      artistAlbum.appendChild(sep);
+      artistAlbum.appendChild(alSpan);
+    }
+  }
+
+  /* =========================================================
+     7. HIGH-FREQUENCY BRIDGE POLLING (180ms) & 60FPS LOOP
+     ========================================================= */
+  async function pollBridge() {
+    try {
+      const res = await fetch(`${BRIDGE}/state`, { cache: 'no-store' });
+      if (!res.ok) throw new Error('bad');
+      const d = await res.json();
+      bridgeConnected = true;
+
+      if (!d.active) {
+        document.body.classList.add('idle');
+        document.body.classList.remove('paused');
+        statusText.textContent = 'STANDBY';
+        titleText.textContent = '等待播放音乐';
+        artistAlbum.textContent = '打开 MyGo Music 播放任意歌曲';
+        sleeve.classList.remove('has-cover');
+        coverImg.classList.remove('loaded');
+        labelImg.classList.remove('loaded');
+        bgVeil.style.opacity = '0';
+        clearMotionVideo();
+        state.active = false;
+        state.playing = false;
+        currentTrackKey = '';
+        smtcCoverLoadedKey = '';
+        lyricsScroll.innerHTML = '<div class="lyrics-empty">音乐响起后，歌词将在此同步呈现</div>';
+        return;
+      }
+
+      document.body.classList.remove('idle');
+      document.body.classList.toggle('paused', !d.playing);
+      statusText.textContent = d.playing ? 'NOW PLAYING' : 'PAUSED';
+      iconPause.style.display = d.playing ? 'block' : 'none';
+      iconPlay.style.display = d.playing ? 'none' : 'block';
+
+      if (motionVideo.classList.contains('playing')) {
+        if (d.playing && motionVideo.paused) motionVideo.play().catch(() => {});
+        else if (!d.playing && !motionVideo.paused) motionVideo.pause();
+      }
+
+      const now = performance.now();
+      const predictedPos = state.playing ? state.position + (now - state.lastSyncPerf) / 1000 : state.position;
+      const serverPos = d.position || 0;
+
+      state.active = true;
+      state.playing = !!d.playing;
+      state.duration = d.duration || 0;
+
+      // Accept server position immediately if track changed, not dragging, or seek lock expired
+      if (!isDragging && (d.trackKey !== currentTrackKey || now >= localSeekLockUntil || Math.abs(serverPos - predictedPos) < 1.2)) {
+        state.position = serverPos;
+        state.lastSyncPerf = now;
+      }
+
+      if (d.trackKey !== currentTrackKey) {
+        currentTrackKey = d.trackKey;
+        smtcCoverLoadedKey = '';
+        coverUpgraded = false;
+        localSeekLockUntil = 0;
+        clearMotionVideo();
+        sleeve.classList.remove('has-cover');
+        coverImg.classList.remove('loaded');
+        labelImg.classList.remove('loaded');
+        applyTrackMeta(d.title, d.artist, d.album);
+
+        const reqKey = d.trackKey;
+        loadLyrics(d.title, d.artist, d.album, d.duration, reqKey);
+        loadEnhancedArtwork(d.title, d.artist, d.album, reqKey);
+      }
+
+      // Catch SMTC thumbnail as soon as MyGo Music finishes attaching it (~200ms after track switch)!
+      if (d.hasCover && smtcCoverLoadedKey !== currentTrackKey) {
+        smtcCoverLoadedKey = currentTrackKey;
+        applyStaticCover(`${BRIDGE}/cover?k=${encodeURIComponent(currentTrackKey)}&t=${Date.now()}`, true, currentTrackKey, true);
+      }
+    } catch (e) {
+      bridgeConnected = false;
+    }
+  }
+
+  function mainLoop(now) {
+    const tSec = now * 0.001;
+    renderFluidMesh(tSec);
+    renderDust(tSec);
+
+    if (state.active) {
+      let cur = state.position;
+      if (state.playing) {
+        cur += (now - state.lastSyncPerf) / 1000;
+      }
+      if (state.duration > 0) cur = Math.min(state.duration, Math.max(0, cur));
+      if (!isDragging) {
+        const pct = state.duration > 0 ? (cur / state.duration) * 100 : 0;
+        progressFill.style.width = `${pct.toFixed(2)}%`;
+        curTimeEl.textContent = fmtTime(cur);
+      }
+      durTimeEl.textContent = fmtTime(state.duration);
+      updateLyrics60fps(cur);
+    } else {
+      progressFill.style.width = '0%';
+      curTimeEl.textContent = '0:00';
+      durTimeEl.textContent = '0:00';
+    }
+    requestAnimationFrame(mainLoop);
+  }
+
+  setInterval(pollBridge, 180);
+  pollBridge();
+  requestAnimationFrame(mainLoop);
+
+  function livelyCurrentTrack(data) {
+    if (bridgeConnected) return;
+    let track = null;
+    try { track = typeof data === 'string' ? JSON.parse(data) : data; } catch (e) {}
+    if (!track || (!track.Title && !track.Artist)) return;
+    document.body.classList.remove('idle');
+    statusText.textContent = 'NOW PLAYING';
+    applyTrackMeta(track.Title, track.Artist, track.AlbumTitle);
+    if (track.Thumbnail) {
+      const src = track.Thumbnail.startsWith('data:') ? track.Thumbnail : 'data:image/jpeg;base64,' + track.Thumbnail;
+      applyStaticCover(src, true, currentTrackKey);
+    }
+  }
+
+  function livelyAudioListener(audioArray) {
+    if (!cfg.audioReactive || !audioArray || !audioArray.length) {
+      audioEnergy *= 0.85;
+      document.documentElement.style.setProperty('--audio-energy', audioEnergy.toFixed(3));
+      return;
+    }
+    let sum = 0;
+    const n = Math.min(20, audioArray.length);
+    for (let i = 0; i < n; i++) sum += audioArray[i] || 0;
+    const target = Math.min(1, (sum / n) * 1.55);
+    audioEnergy += (target - audioEnergy) * 0.25;
+    document.documentElement.style.setProperty('--audio-energy', audioEnergy.toFixed(3));
+  }
+
+  function livelyPropertyListener(name, val) {
+    if (name === 'lyricFont') {
+      if (val === 0) {
+        document.documentElement.style.setProperty('--lyric-font', '"Playfair Display", -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", "PingFang SC", "Microsoft YaHei UI", sans-serif');
+        document.documentElement.style.setProperty('--lyric-weight', '700');
+      } else if (val === 1) {
+        document.documentElement.style.setProperty('--lyric-font', '"Playfair Display", "LXGW WenKai GB Screen", "Palatino Linotype", "STKaiti", Georgia, serif');
+        document.documentElement.style.setProperty('--lyric-weight', '600');
+      } else {
+        document.documentElement.style.setProperty('--lyric-font', '"Playfair Display", "STZhongsong", "Noto Serif SC", Georgia, serif');
+        document.documentElement.style.setProperty('--lyric-weight', '600');
+      }
+    } else if (name === 'enableMotionCover') {
+      cfg.enableMotionCover = !!val;
+      if (!val) clearMotionVideo();
+    } else if (name === 'showTonearm') {
+      document.body.classList.toggle('hide-tonearm', !val);
+    } else if (name === 'vinylSpin') {
+      document.body.classList.toggle('no-spin', !val);
+    } else if (name === 'showTranslation') {
+      document.body.classList.toggle('hide-trans', !val);
+    } else if (name === 'showDust') {
+      cfg.showDust = !!val;
+      dustCanvas.style.opacity = val ? '1' : '0';
+    } else if (name === 'showClock') {
+      cfg.showClock = !!val;
+      clockWidget.style.opacity = val ? '1' : '0';
+    } else if (name === 'audioReactive') {
+      cfg.audioReactive = !!val;
+    } else if (name === 'filmGrain') {
+      grainEl.style.display = val ? 'block' : 'none';
+    } else if (name === 'lyricScale') {
+      document.documentElement.style.setProperty('--lyric-scale', (val / 100).toFixed(2));
+    }
+  }
+</script>
+</body>
+</html>

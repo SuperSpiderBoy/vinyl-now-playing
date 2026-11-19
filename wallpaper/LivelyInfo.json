@@ -1,0 +1,12 @@
+{
+  "AppVersion": "2.2.1.0",
+  "Title": "Vinyl Now Playing (专辑黑胶)",
+  "Thumbnail": "thumbnail.png",
+  "Preview": "thumbnail.png",
+  "Desc": "实时读取 MyGo Music / 系统正在播放的音乐封面与歌名，自动提取封面配色生成黑胶唱片与海报风动态壁纸，支持音频律动。",
+  "Author": "Custom for MyGo Music",
+  "License": "MIT",
+  "Type": 1,
+  "Arguments": "--system-nowplaying --audio --pause-event true",
+  "FileName": "index.html"
+}
