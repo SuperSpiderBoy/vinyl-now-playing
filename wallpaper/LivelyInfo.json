@@ -3,10 +3,10 @@
   "Title": "Vinyl Now Playing (专辑黑胶)",
   "Thumbnail": "thumbnail.png",
   "Preview": "thumbnail.png",
-  "Desc": "实时读取 MyGo Music / 系统正在播放的音乐封面与歌名，自动提取封面配色生成黑胶唱片与海报风动态壁纸，支持音频律动。",
-  "Author": "Custom for MyGo Music",
+  "Desc": "低能耗高质感黑胶唱片与逐字歌词动态壁纸，支持 Apple Music 动态封面、桌面拖动进度条与覆盖自动休眠。",
+  "Author": "SuperSpiderBoy",
   "License": "MIT",
   "Type": 1,
-  "Arguments": "--system-nowplaying --audio --pause-event true",
+  "Arguments": "--system-nowplaying --pause-event true",
   "FileName": "index.html"
 }

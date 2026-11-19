@@ -5,8 +5,8 @@
     "text": "歌词字体 / Lyrics Font",
     "items": [
       "衬线英文 × 原版中文 / Playfair & Sans (推荐)",
-      "文楷 × 衬线 / WenKai & Playfair",
-      "杂志中宋 / ZhongSong & Playfair"
+      "杂志中宋 / ZhongSong & Playfair",
+      "楷体衬线 / KaiTi & Playfair"
     ]
   },
   "enableMotionCover": {
@@ -38,11 +38,6 @@
     "type": "checkbox",
     "value": true,
     "text": "右上角极简时钟 / Editorial Clock"
-  },
-  "audioReactive": {
-    "type": "checkbox",
-    "value": true,
-    "text": "音频微光律动 / Audio Breathing"
   },
   "filmGrain": {
     "type": "checkbox",

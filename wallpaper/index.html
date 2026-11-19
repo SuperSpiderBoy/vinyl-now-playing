@@ -3,10 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Vinyl Now Playing — Apple Editorial</title>
-<link rel="stylesheet" href="./fonts/wenkai/wenkai.css">
+<title>Vinyl Now Playing — Apple Editorial (Low-Power)</title>
 <style>
-  /* Local bundled Playfair Display (600/700 + Italic) for editorial Latin lyrics */
+  /* Local bundled Playfair Display (~82KB total) for editorial Latin typography */
   @font-face {
     font-family: 'Playfair Display';
     font-style: normal;
@@ -36,7 +35,6 @@
     --accent: #f3dfbf;
     --accent-rgb: 243, 223, 191;
     --glow-rgb: 140, 118, 175;
-    --audio-energy: 0;
     --lyric-scale: 1;
     --lyric-font: "Playfair Display", -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", "PingFang SC", "Microsoft YaHei UI", sans-serif;
     --lyric-weight: 700;
@@ -55,32 +53,25 @@
     -webkit-font-smoothing: antialiased;
   }
 
-  /* 1. Living Fluid Aurora Mesh Canvas */
+  /* Zero-power freeze when Lively pauses wallpaper (e.g. fullscreen/covered) */
+  body.wp-paused *,
+  body.wp-paused *::before,
+  body.wp-paused *::after {
+    animation-play-state: paused !important;
+  }
+
+  /* 1. Ultra-Low-Power 96x54 Fluid Aurora Canvas (hardware bilinear upscaled, zero 52px GPU blur pass!) */
   #bgCanvas {
     position: fixed;
-    inset: -8%;
-    width: 116vw;
-    height: 116vh;
+    inset: -2%;
+    width: 104vw;
+    height: 104vh;
     z-index: 0;
-    filter: blur(52px) saturate(1.38) contrast(1.06);
-    transform: translateZ(0);
+    image-rendering: auto;
+    filter: saturate(1.28) contrast(1.04);
   }
 
-  .bg-cover-veil {
-    position: fixed;
-    inset: -12%;
-    width: 124%;
-    height: 124%;
-    object-fit: cover;
-    opacity: 0;
-    filter: blur(95px) saturate(1.5) brightness(0.42);
-    mix-blend-mode: soft-light;
-    transition: opacity 1.1s ease;
-    z-index: 0;
-    pointer-events: none;
-  }
-
-  /* 2. Floating Atmospheric Bokeh / Vinyl Dust Canvas */
+  /* 2. Downscaled (0.375x) Atmospheric Dust Canvas — 86% less GPU VRAM */
   #dustCanvas {
     position: fixed;
     inset: 0;
@@ -91,14 +82,14 @@
     transition: opacity 0.6s ease;
   }
 
-  /* 3. Fine 35mm Organic Film Grain & Studio Vignette */
+  /* 3. Lightweight Film Grain & Studio Vignette */
   .grain {
     position: fixed;
     inset: 0;
     z-index: 1;
     pointer-events: none;
-    opacity: 0.04;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    opacity: 0.036;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 160 160' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   }
 
   .vignette {
@@ -153,7 +144,6 @@
     padding: 7vh 5.2vw 8.5vh 9.2vw;
   }
 
-  /* Left Column: Hi-Fi Vinyl Deck + Editorial Metadata */
   .left-col {
     display: flex;
     flex-direction: column;
@@ -177,26 +167,29 @@
     border-radius: 50%;
     pointer-events: none;
     z-index: 0;
-    opacity: 0.45;
+    opacity: 0.42;
     background:
       radial-gradient(circle at 58% 50%, transparent 44%, rgba(255,255,255,0.035) 44.2%, transparent 44.5%),
       radial-gradient(circle at 58% 50%, transparent 56%, rgba(255,255,255,0.028) 56.2%, transparent 56.5%),
       radial-gradient(circle at 58% 50%, transparent 68%, rgba(255,255,255,0.02) 68.2%, transparent 68.5%);
-    transform: scale(calc(1 + var(--audio-energy) * 0.035));
-    transition: transform 0.2s linear;
   }
 
+  /* Pure-CSS Organic Breathing Aura (Zero WASAPI FFT CPU overhead!) */
   .aura {
     position: absolute;
     inset: -14%;
     border-radius: 32px;
-    background: radial-gradient(circle, rgba(var(--glow-rgb), 0.72) 0%, transparent 68%);
-    opacity: calc(0.26 + var(--audio-energy) * 0.42);
-    filter: blur(42px);
-    transform: scale(calc(1 + var(--audio-energy) * 0.09));
-    transition: opacity 0.14s linear, transform 0.14s linear;
+    background: radial-gradient(circle, rgba(var(--glow-rgb), 0.58) 0%, transparent 68%);
+    opacity: 0.34;
+    filter: blur(28px);
     pointer-events: none;
     z-index: 0;
+    animation: auraBreath 6s ease-in-out infinite alternate;
+  }
+  body.paused .aura, body.idle .aura { animation-play-state: paused; opacity: 0.22; }
+  @keyframes auraBreath {
+    0% { opacity: 0.26; transform: scale(0.98); }
+    100% { opacity: 0.44; transform: scale(1.04); }
   }
 
   .vinyl-wrap {
@@ -206,8 +199,8 @@
     height: 92%;
     border-radius: 50%;
     z-index: 1;
-    transition: right 0.95s cubic-bezier(0.22, 1, 0.36, 1), transform 0.95s ease;
-    filter: drop-shadow(0 20px 38px rgba(0, 0, 0, 0.68));
+    transition: right 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+    filter: drop-shadow(0 18px 34px rgba(0, 0, 0, 0.65));
     pointer-events: none;
   }
 
@@ -229,7 +222,6 @@
     align-items: center;
     justify-content: center;
     animation: spin 16s linear infinite;
-    animation-play-state: running;
     border: 1px solid rgba(255, 255, 255, 0.18);
     box-shadow: inset 0 0 24px rgba(255, 255, 255, 0.06);
   }
@@ -297,7 +289,6 @@
     z-index: 3;
   }
 
-  /* Minimalist Anodized-Aluminum Tonearm */
   .tonearm-mount {
     position: absolute;
     top: -4%;
@@ -320,13 +311,12 @@
   .tonearm-arm {
     transform-origin: 78px 24px;
     transform: rotate(-16deg);
-    transition: transform 1.1s cubic-bezier(0.22, 1, 0.36, 1);
+    transition: transform 1.0s cubic-bezier(0.22, 1, 0.36, 1);
   }
   body:not(.idle):not(.paused) .tonearm-arm {
     transform: rotate(3deg);
   }
 
-  /* Museum-Grade Matte Album Sleeve */
   .sleeve {
     position: relative;
     z-index: 2;
@@ -336,8 +326,8 @@
     overflow: hidden;
     background: linear-gradient(145deg, rgba(255,255,255,0.07), rgba(255,255,255,0.02));
     box-shadow:
-      0 28px 65px rgba(0, 0, 0, 0.62),
-      0 6px 20px rgba(0, 0, 0, 0.38),
+      0 26px 60px rgba(0, 0, 0, 0.6),
+      0 6px 18px rgba(0, 0, 0, 0.35),
       inset 0 0 0 1px rgba(255, 255, 255, 0.18);
   }
 
@@ -350,16 +340,15 @@
     display: block;
     opacity: 0;
     transition: opacity 0.35s ease;
-    will-change: transform;
   }
   .sleeve-img.loaded { opacity: 1; }
 
   body:not(.idle):not(.paused):not(.has-motion) .sleeve-img.loaded {
-    animation: kenBurns 20s ease-in-out infinite alternate;
+    animation: kenBurns 22s ease-in-out infinite alternate;
   }
   @keyframes kenBurns {
-    0% { transform: scale(1.0) translate(0, 0); }
-    100% { transform: scale(1.045) translate(-0.8%, -0.8%); }
+    0% { transform: scale(1.0); }
+    100% { transform: scale(1.04); }
   }
 
   .motion-video {
@@ -385,7 +374,6 @@
     pointer-events: none;
   }
 
-  /* Discreet Hover Transport Controls on Sleeve */
   .hover-controls {
     position: absolute;
     bottom: 14px;
@@ -397,13 +385,12 @@
     gap: 8px;
     padding: 6px 12px;
     border-radius: 99px;
-    background: rgba(14, 14, 18, 0.62);
-    backdrop-filter: blur(18px);
+    background: rgba(14, 14, 18, 0.68);
     border: 1px solid rgba(255, 255, 255, 0.16);
-    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.45);
     opacity: 0;
     pointer-events: none;
-    transition: opacity 0.28s ease, transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+    transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
   }
   .sleeve:hover .hover-controls {
     opacity: 1;
@@ -425,11 +412,7 @@
     cursor: pointer;
     transition: background 0.2s ease, transform 0.15s ease, color 0.2s ease;
   }
-  .ctrl-btn:hover {
-    background: rgba(255, 255, 255, 0.14);
-    color: #ffffff;
-    transform: scale(1.08);
-  }
+  .ctrl-btn:hover { background: rgba(255, 255, 255, 0.15); color: #ffffff; transform: scale(1.08); }
   .ctrl-btn:active { transform: scale(0.94); }
   .ctrl-btn svg { width: 15px; height: 15px; fill: currentColor; }
 
@@ -444,7 +427,7 @@
     background: linear-gradient(145deg, #1c1929, #2b243c);
     color: rgba(255, 255, 255, 0.72);
     gap: 12px;
-    transition: opacity 0.4s ease;
+    transition: opacity 0.35s ease;
   }
   .sleeve.has-cover .fallback-cover { opacity: 0; pointer-events: none; }
 
@@ -461,7 +444,6 @@
     font-weight: 300;
   }
 
-  /* Metadata */
   .meta {
     width: 100%;
     display: flex;
@@ -485,17 +467,13 @@
     height: 6px;
     border-radius: 50%;
     background: var(--accent);
-    box-shadow: 0 0 12px var(--accent);
-    animation: dotPulse 2.4s ease-in-out infinite;
+    box-shadow: 0 0 10px var(--accent);
+    animation: dotPulse 2.8s ease-in-out infinite;
   }
-  body.paused .dot, body.idle .dot {
-    animation: none;
-    opacity: 0.35;
-    box-shadow: none;
-  }
+  body.paused .dot, body.idle .dot { animation: none; opacity: 0.35; box-shadow: none; }
   @keyframes dotPulse {
     0%, 100% { transform: scale(1); opacity: 1; }
-    50% { transform: scale(1.35); opacity: 0.6; }
+    50% { transform: scale(1.3); opacity: 0.6; }
   }
 
   .pill-tag {
@@ -518,7 +496,7 @@
     line-height: 1.18;
     letter-spacing: -0.01em;
     color: #ffffff;
-    text-shadow: 0 4px 24px rgba(0, 0, 0, 0.32);
+    text-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
     word-break: break-word;
   }
 
@@ -541,7 +519,6 @@
     display: flex;
     flex-direction: column;
     gap: 5px;
-    margin-top: 0px;
   }
 
   .progress-hit {
@@ -575,7 +552,6 @@
     border-radius: 99px;
     background: linear-gradient(90deg, rgba(var(--accent-rgb), 0.78), #ffffff);
     position: relative;
-    will-change: width;
   }
 
   .progress-fill::after {
@@ -587,8 +563,8 @@
     height: 8px;
     border-radius: 50%;
     background: #ffffff;
-    transform: translateY(-50%) scale(calc(0.9 + var(--audio-energy) * 0.55));
-    box-shadow: 0 0 14px rgba(255, 255, 255, 0.9);
+    transform: translateY(-50%);
+    box-shadow: 0 0 12px rgba(255, 255, 255, 0.85);
     opacity: 0.92;
     transition: width 0.15s ease, height 0.15s ease;
   }
@@ -606,8 +582,7 @@
     transform: translateX(-50%);
     padding: 3px 8px;
     border-radius: 6px;
-    background: rgba(12, 12, 16, 0.78);
-    backdrop-filter: blur(10px);
+    background: rgba(12, 12, 16, 0.84);
     border: 1px solid rgba(255, 255, 255, 0.16);
     color: #ffffff;
     font-size: 0.7rem;
@@ -617,9 +592,7 @@
     transition: opacity 0.15s ease;
   }
   .progress-hit:hover .seek-tooltip,
-  .progress-hit.dragging .seek-tooltip {
-    opacity: 1;
-  }
+  .progress-hit.dragging .seek-tooltip { opacity: 1; }
 
   .time-row {
     display: flex;
@@ -630,7 +603,7 @@
     letter-spacing: 0.05em;
   }
 
-  /* 6. Right Column: Graceful Artistic Per-Char Floating Lyrics */
+  /* 6. Right Column: Low-GPU-Layer Apple Music Per-Char Lyrics */
   .lyrics-col {
     position: relative;
     height: 76vh;
@@ -663,36 +636,43 @@
     display: flex;
     flex-direction: column;
     gap: 26px;
-    transition: transform 0.68s cubic-bezier(0.22, 1, 0.36, 1);
+    transition: transform 0.65s cubic-bezier(0.22, 1, 0.36, 1);
     will-change: transform;
   }
 
   .lyrics-scroll.fast-snap {
-    transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+    transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
   }
 
+  /* Far off-screen lines skip GPU blur completely! */
   .lyric-line {
     font-family: var(--lyric-font);
     font-size: calc(clamp(1.58rem, 2.38vw, 2.58rem) * var(--lyric-scale));
     font-weight: var(--lyric-weight);
     line-height: 1.44;
     letter-spacing: 0.015em;
-    color: rgba(255, 255, 255, 0.23);
-    filter: blur(2.0px);
+    color: rgba(255, 255, 255, 0.22);
+    filter: none;
     transform-origin: left center;
     transform: scale(0.955);
     transition:
-      color 0.45s ease,
-      filter 0.45s ease,
-      transform 0.55s cubic-bezier(0.22, 1, 0.36, 1),
-      opacity 0.45s ease;
+      color 0.42s ease,
+      filter 0.42s ease,
+      transform 0.52s cubic-bezier(0.22, 1, 0.36, 1),
+      opacity 0.42s ease;
     word-break: break-word;
     cursor: pointer;
   }
 
+  .lyric-line.far-hidden {
+    opacity: 0;
+    filter: none;
+    pointer-events: none;
+  }
+
   .lyric-line:hover {
-    filter: blur(0px) !important;
-    color: rgba(255, 255, 255, 0.78) !important;
+    filter: none !important;
+    color: rgba(255, 255, 255, 0.8) !important;
   }
 
   .lyric-line.d1 {
@@ -707,26 +687,29 @@
     transform: scale(0.968);
   }
 
+  .lyric-line.d3 {
+    color: rgba(255, 255, 255, 0.20);
+    filter: blur(2.0px);
+    transform: scale(0.955);
+  }
+
   .lyric-line.past {
-    color: rgba(255, 255, 255, 0.25);
-    filter: blur(1.4px);
+    color: rgba(255, 255, 255, 0.24);
   }
 
   .lyric-line.active {
     color: rgba(255, 255, 255, 0.36);
-    filter: blur(0px);
+    filter: none;
     transform: scale(1.028);
   }
 
-  /* Per-Character / Per-Word Floating & Luminous Sweep (safe padding for Serif swashes!) */
   .lyric-line .tok {
     display: inline-block;
     white-space: pre-wrap;
     padding: 0.04em 0.03em;
     margin: -0.04em -0.03em;
-    will-change: transform, background-position;
     transform: translateY(0px) scale(1);
-    transition: transform 0.26s cubic-bezier(0.22, 1, 0.36, 1);
+    transition: transform 0.24s cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   .lyric-line.active .tok {
@@ -741,7 +724,7 @@
     background-clip: text;
     color: transparent;
     transform: translateY(var(--lift, 0px)) scale(var(--sc, 1));
-    filter: drop-shadow(0 0 var(--glow, 0px) rgba(255, 255, 255, 0.55));
+    filter: drop-shadow(0 0 var(--glow, 0px) rgba(255, 255, 255, 0.5));
   }
 
   .lyric-line.active .tok.sung {
@@ -750,10 +733,10 @@
     background-clip: initial;
     color: #ffffff;
     transform: translateY(-0.8px) scale(1);
-    filter: drop-shadow(0 3px 16px rgba(0, 0, 0, 0.28));
+    filter: none;
+    text-shadow: 0 3px 16px rgba(0, 0, 0, 0.28);
   }
 
-  /* Keep translation clean sans-serif so artistic main lyric + crisp subtitle pair like a book */
   .lyric-trans {
     display: block;
     margin-top: 6px;
@@ -764,12 +747,9 @@
     letter-spacing: 0.025em;
     line-height: 1.4;
   }
-  .lyric-line.active .lyric-trans {
-    color: rgba(255, 255, 255, 0.78);
-  }
+  .lyric-line.active .lyric-trans { color: rgba(255, 255, 255, 0.78); }
   body.hide-trans .lyric-trans { display: none; }
 
-  /* Breathing Interlude Dots */
   .interlude-dots {
     display: none;
     align-items: center;
@@ -790,7 +770,7 @@
   .id-dot.lit {
     background: #ffffff;
     transform: scale(1.15);
-    box-shadow: 0 0 16px rgba(255, 255, 255, 0.65);
+    box-shadow: 0 0 14px rgba(255, 255, 255, 0.65);
   }
 
   .lyrics-empty {
@@ -808,8 +788,7 @@
 </style>
 </head>
 <body class="idle">
-  <canvas id="bgCanvas" width="320" height="180"></canvas>
-  <img id="bgVeil" class="bg-cover-veil" alt="">
+  <canvas id="bgCanvas" width="96" height="54"></canvas>
   <canvas id="dustCanvas"></canvas>
   <div id="grain" class="grain"></div>
   <div class="vignette"></div>
@@ -915,13 +894,12 @@
     </section>
   </main>
 
-  <canvas id="colorCanvas" width="32" height="32" style="display:none;"></canvas>
+  <canvas id="colorCanvas" width="24" height="24" style="display:none;"></canvas>
 
 <script>
   const BRIDGE = 'http://127.0.0.1:28973';
   const bgCanvas = document.getElementById('bgCanvas');
-  const bgCtx = bgCanvas.getContext('2d');
-  const bgVeil = document.getElementById('bgVeil');
+  const bgCtx = bgCanvas.getContext('2d', { alpha: false });
   const dustCanvas = document.getElementById('dustCanvas');
   const dustCtx = dustCanvas.getContext('2d');
   const sleeve = document.getElementById('sleeve');
@@ -948,23 +926,26 @@
   const iconPause = document.getElementById('iconPause');
   const iconPlay = document.getElementById('iconPlay');
 
-  let cfg = {
-    enableMotionCover: true,
-    showDust: true,
-    audioReactive: true,
-    showClock: true
-  };
-
+  let cfg = { enableMotionCover: true, showDust: true, showClock: true };
   let currentTrackKey = '';
   let smtcCoverLoadedKey = '';
   let bridgeConnected = false;
-  let audioEnergy = 0;
   let currentMeta = { title: '', artist: '', album: '' };
   let badgeFlags = { motion: false, yrc: false };
-  let coverUpgraded = false;
   let isDragging = false;
   let dragRatio = 0;
   let localSeekLockUntil = 0;
+
+  // Power management state
+  let wallpaperPaused = false;
+  let rafId = null;
+  let pollTimer = null;
+  let lastBgFrame = 0;
+  let lastDustFrame = 0;
+  let lastLyricFrame = 0;
+  let lastTimeStr = '';
+  let lastDurStr = '';
+  let paletteSettled = false;
 
   let state = {
     active: false,
@@ -979,7 +960,7 @@
   let interludeEl = null;
 
   /* =========================================================
-     1. LIVING FLUID AURORA MESH
+     1. ULTRA-LOW-POWER 96x54 FLUID AURORA MESH (12fps!)
      ========================================================= */
   let curPalette = [
     [22, 18, 34],
@@ -991,10 +972,10 @@
   let tgtPalette = curPalette.map(c => [...c]);
 
   const orbs = [
-    { bx: 0.22, by: 0.28, rx: 0.20, ry: 0.16, sx: 0.22, sy: 0.17, ph: 0.0, rad: 0.56 },
-    { bx: 0.78, by: 0.30, rx: 0.18, ry: 0.22, sx: 0.16, sy: 0.23, ph: 1.7, rad: 0.58 },
-    { bx: 0.65, by: 0.75, rx: 0.22, ry: 0.16, sx: 0.19, sy: 0.15, ph: 3.1, rad: 0.54 },
-    { bx: 0.28, by: 0.72, rx: 0.17, ry: 0.20, sx: 0.14, sy: 0.21, ph: 4.5, rad: 0.50 }
+    { bx: 0.22, by: 0.28, rx: 0.20, ry: 0.16, sx: 0.20, sy: 0.16, ph: 0.0, rad: 0.62 },
+    { bx: 0.78, by: 0.30, rx: 0.18, ry: 0.22, sx: 0.15, sy: 0.21, ph: 1.7, rad: 0.64 },
+    { bx: 0.65, by: 0.75, rx: 0.22, ry: 0.16, sx: 0.18, sy: 0.14, ph: 3.1, rad: 0.60 },
+    { bx: 0.28, by: 0.72, rx: 0.17, ry: 0.20, sx: 0.13, sy: 0.19, ph: 4.5, rad: 0.56 }
   ];
 
   function rgbToHsl(r, g, b) {
@@ -1043,18 +1024,17 @@
 
   function extractPalette(img) {
     try {
-      colorCtx.drawImage(img, 0, 0, 32, 32);
-      const data = colorCtx.getImageData(0, 0, 32, 32).data;
+      colorCtx.drawImage(img, 0, 0, 24, 24);
+      const data = colorCtx.getImageData(0, 0, 24, 24).data;
       const quads = [[], [], [], []];
       const all = [];
-      for (let y = 0; y < 32; y += 2) {
-        for (let x = 0; x < 32; x += 2) {
-          const i = (y * 32 + x) * 4;
+      for (let y = 0; y < 24; y += 2) {
+        for (let x = 0; x < 24; x += 2) {
+          const i = (y * 24 + x) * 4;
           const r = data[i], g = data[i + 1], b = data[i + 2];
           const [h, s, l] = rgbToHsl(r, g, b);
           const item = { r, g, b, h, s, l };
-          const qIdx = (y < 16 ? 0 : 2) + (x < 16 ? 0 : 1);
-          quads[qIdx].push(item);
+          quads[(y < 12 ? 0 : 2) + (x < 12 ? 0 : 1)].push(item);
           all.push(item);
         }
       }
@@ -1062,11 +1042,7 @@
         arr.sort((a, b) => (b.s * 0.75 + (0.5 - Math.abs(b.l - 0.42)) * 0.25) - (a.s * 0.75 + (0.5 - Math.abs(a.l - 0.42)) * 0.25));
         return arr[Math.floor(arr.length * 0.14)] || { r: 60, g: 50, b: 85 };
       };
-      const q0 = pickQuad(quads[0]);
-      const q1 = pickQuad(quads[1]);
-      const q2 = pickQuad(quads[2]);
-      const q3 = pickQuad(quads[3]);
-
+      const q0 = pickQuad(quads[0]), q1 = pickQuad(quads[1]), q2 = pickQuad(quads[2]), q3 = pickQuad(quads[3]);
       all.sort((a, b) => a.l - b.l);
       const deep = all[Math.floor(all.length * 0.1)] || q0;
       const accentRaw = [...all].sort((a, b) => (b.s * 0.65 + b.l * 0.35) - (a.s * 0.65 + a.l * 0.35))[Math.floor(all.length * 0.08)] || q1;
@@ -1079,6 +1055,7 @@
       const acc = tuneRichColor(accentRaw.r, accentRaw.g, accentRaw.b, 0.70, 0.85, 1.15, 0.0);
 
       tgtPalette = [baseC, o1, o2, o3, o4];
+      paletteSettled = false;
       document.documentElement.style.setProperty('--accent', `rgb(${acc[0]}, ${acc[1]}, ${acc[2]})`);
       document.documentElement.style.setProperty('--accent-rgb', `${acc[0]}, ${acc[1]}, ${acc[2]}`);
       document.documentElement.style.setProperty('--glow-rgb', `${o2[0]}, ${o2[1]}, ${o2[2]}`);
@@ -1086,30 +1063,32 @@
   }
 
   function renderFluidMesh(tSec) {
+    let maxDiff = 0;
     for (let i = 0; i < 5; i++) {
       for (let c = 0; c < 3; c++) {
-        curPalette[i][c] += (tgtPalette[i][c] - curPalette[i][c]) * 0.032;
+        const diff = tgtPalette[i][c] - curPalette[i][c];
+        curPalette[i][c] += diff * 0.12;
+        if (Math.abs(diff) > maxDiff) maxDiff = Math.abs(diff);
       }
     }
+    paletteSettled = maxDiff < 0.4;
+
     const w = bgCanvas.width, h = bgCanvas.height;
     const b = curPalette[0];
     bgCtx.globalCompositeOperation = 'source-over';
     bgCtx.fillStyle = `rgb(${b[0]|0}, ${b[1]|0}, ${b[2]|0})`;
     bgCtx.fillRect(0, 0, w, h);
 
-    const energyBoost = cfg.audioReactive ? audioEnergy * 0.14 : 0;
     bgCtx.globalCompositeOperation = 'screen';
-
     for (let i = 0; i < orbs.length; i++) {
       const o = orbs[i];
       const col = curPalette[i + 1];
       const cx = (o.bx + Math.sin(tSec * o.sx + o.ph) * o.rx) * w;
       const cy = (o.by + Math.cos(tSec * o.sy + o.ph * 1.3) * o.ry) * h;
-      const rad = (o.rad + energyBoost) * Math.max(w, h);
+      const rad = o.rad * w;
       const g = bgCtx.createRadialGradient(cx, cy, 0, cx, cy, rad);
-      const alpha = Math.min(0.85, 0.52 + energyBoost * 0.9);
-      g.addColorStop(0, `rgba(${col[0]|0}, ${col[1]|0}, ${col[2]|0}, ${alpha.toFixed(3)})`);
-      g.addColorStop(0.55, `rgba(${col[0]|0}, ${col[1]|0}, ${col[2]|0}, ${(alpha * 0.36).toFixed(3)})`);
+      g.addColorStop(0, `rgba(${col[0]|0}, ${col[1]|0}, ${col[2]|0}, 0.56)`);
+      g.addColorStop(0.55, `rgba(${col[0]|0}, ${col[1]|0}, ${col[2]|0}, 0.20)`);
       g.addColorStop(1, 'rgba(0,0,0,0)');
       bgCtx.fillStyle = g;
       bgCtx.fillRect(0, 0, w, h);
@@ -1117,20 +1096,20 @@
   }
 
   /* =========================================================
-     2. FLOATING BOKEH DUST
+     2. DOWNSCALED (0.375x) BOKEH DUST (20fps!)
      ========================================================= */
   let dustParticles = [];
   function initDust() {
-    dustCanvas.width = window.innerWidth;
-    dustCanvas.height = window.innerHeight;
-    dustParticles = Array.from({ length: 36 }, () => ({
+    dustCanvas.width = Math.max(480, Math.round(window.innerWidth * 0.375));
+    dustCanvas.height = Math.max(270, Math.round(window.innerHeight * 0.375));
+    dustParticles = Array.from({ length: 24 }, () => ({
       x: Math.random() * dustCanvas.width,
       y: Math.random() * dustCanvas.height,
-      r: 0.8 + Math.random() * 2.4,
-      vx: (Math.random() - 0.5) * 0.18,
-      vy: -0.08 - Math.random() * 0.24,
+      r: 0.45 + Math.random() * 1.15,
+      vx: (Math.random() - 0.5) * 0.12,
+      vy: -0.06 - Math.random() * 0.16,
       phase: Math.random() * Math.PI * 2,
-      baseAlpha: 0.08 + Math.random() * 0.24
+      baseAlpha: 0.08 + Math.random() * 0.22
     }));
   }
   window.addEventListener('resize', initDust);
@@ -1140,20 +1119,19 @@
     dustCtx.clearRect(0, 0, dustCanvas.width, dustCanvas.height);
     if (!cfg.showDust) return;
     const acc = curPalette[4];
-    const beatBoost = cfg.audioReactive ? audioEnergy * 0.22 : 0;
+    const rC = Math.min(255, (acc[0] + 65) | 0);
+    const gC = Math.min(255, (acc[1] + 65) | 0);
+    const bC = Math.min(255, (acc[2] + 65) | 0);
     for (const p of dustParticles) {
-      const speedMul = state.playing ? 1.0 : 0.35;
-      p.x += (p.vx + Math.sin(tSec * 0.4 + p.phase) * 0.12) * speedMul;
-      p.y += p.vy * speedMul;
-      if (p.y < -10) { p.y = dustCanvas.height + 10; p.x = Math.random() * dustCanvas.width; }
-      if (p.x < -10) p.x = dustCanvas.width + 10;
-      if (p.x > dustCanvas.width + 10) p.x = -10;
-
-      const twinkle = 0.6 + 0.4 * Math.sin(tSec * 1.1 + p.phase);
-      const a = Math.min(0.65, (p.baseAlpha + beatBoost) * twinkle);
+      p.x += p.vx + Math.sin(tSec * 0.4 + p.phase) * 0.06;
+      p.y += p.vy;
+      if (p.y < -6) { p.y = dustCanvas.height + 6; p.x = Math.random() * dustCanvas.width; }
+      if (p.x < -6) p.x = dustCanvas.width + 6;
+      if (p.x > dustCanvas.width + 6) p.x = -6;
+      const a = p.baseAlpha * (0.62 + 0.38 * Math.sin(tSec * 1.0 + p.phase));
       dustCtx.beginPath();
       dustCtx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-      dustCtx.fillStyle = `rgba(${Math.min(255, (acc[0]+65)|0)}, ${Math.min(255, (acc[1]+65)|0)}, ${Math.min(255, (acc[2]+65)|0)}, ${a.toFixed(3)})`;
+      dustCtx.fillStyle = `rgba(${rC}, ${gC}, ${bC}, ${a.toFixed(2)})`;
       dustCtx.fill();
     }
   }
@@ -1164,12 +1142,13 @@
   const DAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
   const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
   function updateClock() {
+    if (wallpaperPaused) return;
     const d = new Date();
     clockTime.textContent = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
     clockDate.textContent = `${DAYS[d.getDay()]} · ${MONTHS[d.getMonth()]} ${d.getDate()}`;
   }
   updateClock();
-  setInterval(updateClock, 15000);
+  setInterval(updateClock, 20000);
 
   /* =========================================================
      4. INTERACTIVE SEEKING & TRANSPORT CONTROLS
@@ -1177,16 +1156,13 @@
   async function seekTo(targetSec) {
     if (!state.active || !state.duration) return;
     const clamped = Math.max(0, Math.min(state.duration, targetSec));
-    // 0ms instant optimistic update on desktop!
     state.position = clamped;
     state.lastSyncPerf = performance.now();
     localSeekLockUntil = performance.now() + 3500;
     lyricsScroll.classList.add('fast-snap');
-    updateLyrics60fps(clamped, true);
-    setTimeout(() => lyricsScroll.classList.remove('fast-snap'), 360);
-    try {
-      await fetch(`${BRIDGE}/seek?pos=${clamped.toFixed(2)}`);
-    } catch (e) {}
+    updateLyrics(clamped, true);
+    setTimeout(() => lyricsScroll.classList.remove('fast-snap'), 340);
+    try { await fetch(`${BRIDGE}/seek?pos=${clamped.toFixed(2)}`); } catch (e) {}
   }
 
   function updateDragVisual(clientX) {
@@ -1209,9 +1185,7 @@
     updateDragVisual(e.clientX);
     e.preventDefault();
   });
-  window.addEventListener('mousemove', (e) => {
-    if (isDragging) updateDragVisual(e.clientX);
-  });
+  window.addEventListener('mousemove', (e) => { if (isDragging) updateDragVisual(e.clientX); });
   window.addEventListener('mouseup', () => {
     if (!isDragging) return;
     isDragging = false;
@@ -1231,7 +1205,7 @@
   document.getElementById('btnNext').addEventListener('click', () => sendControl('next'));
 
   /* =========================================================
-     5. YRC + SMART WEIGHTED LRC LYRICS
+     5. YRC + WEIGHTED LRC LYRICS (Zero off-screen blur layers!)
      ========================================================= */
   function fmtTime(sec) {
     if (!sec || sec < 0 || !isFinite(sec)) return '0:00';
@@ -1243,9 +1217,7 @@
     const tokens = [];
     const re = /([A-Za-z0-9']+['’\-]?[A-Za-z0-9']*\s*)|([^\sA-Za-z0-9]\s*)|(\s+)/g;
     let m;
-    while ((m = re.exec(text)) !== null) {
-      if (m[0]) tokens.push(m[0]);
-    }
+    while ((m = re.exec(text)) !== null) { if (m[0]) tokens.push(m[0]); }
     return tokens.length ? tokens : [text];
   }
 
@@ -1268,11 +1240,9 @@
       while ((tm = tokRe.exec(body)) !== null) {
         const ts = parseInt(tm[1], 10) / 1000;
         const td = Math.max(0.06, parseInt(tm[2], 10) / 1000);
-        const txt = tm[3];
-        if (txt) tokens.push({ text: txt, start: ts, end: ts + td });
+        if (tm[3]) tokens.push({ text: tm[3], start: ts, end: ts + td });
       }
-      const fullText = tokens.map(t => t.text).join('').trim();
-      if (tokens.length && fullText) {
+      if (tokens.length && tokens.map(t => t.text).join('').trim()) {
         lines.push({ time: lineStart, endTime: lineStart + Math.max(0.4, lineDur), tokens });
       }
     }
@@ -1285,17 +1255,12 @@
     const list = [];
     const re = /\[(\d{1,3}):(\d{2})(?:\.(\d{1,3}))?\]/g;
     for (const raw of lrcStr.split(/\r?\n/)) {
-      let m;
-      const times = [];
-      re.lastIndex = 0;
+      let m; const times = []; re.lastIndex = 0;
       while ((m = re.exec(raw)) !== null) {
-        const t = parseInt(m[1], 10) * 60 + parseInt(m[2], 10) + parseInt((m[3] || '0').padEnd(3, '0').slice(0, 3), 10) / 1000;
-        times.push(t);
+        times.push(parseInt(m[1], 10) * 60 + parseInt(m[2], 10) + parseInt((m[3] || '0').padEnd(3, '0').slice(0, 3), 10) / 1000);
       }
       const text = raw.replace(/\[\d{1,3}:\d{2}(?:\.\d{1,3})?\]/g, '').trim();
-      if (times.length && text) {
-        for (const t of times) list.push({ time: t, text });
-      }
+      if (times.length && text) { for (const t of times) list.push({ time: t, text }); }
     }
     list.sort((a, b) => a.time - b.time);
     return list;
@@ -1351,7 +1316,7 @@
 
       lines.forEach((line, idx) => {
         const div = document.createElement('div');
-        div.className = 'lyric-line';
+        div.className = idx > 7 ? 'lyric-line far-hidden' : 'lyric-line';
         div.dataset.idx = idx;
         div.addEventListener('click', () => seekTo(line.time));
         for (const tok of line.tokens) {
@@ -1433,7 +1398,7 @@
     }
   }
 
-  function updateLyrics60fps(posSec, forceScroll = false) {
+  function updateLyrics(posSec, forceScroll = false) {
     if (!parsedLyrics.length) return;
 
     let idx = -1;
@@ -1461,35 +1426,38 @@
       activeLineIdx = idx;
       if (jump) {
         lyricsScroll.classList.add('fast-snap');
-        setTimeout(() => lyricsScroll.classList.remove('fast-snap'), 360);
+        setTimeout(() => lyricsScroll.classList.remove('fast-snap'), 340);
       }
+      const centerIdx = idx === -1 ? 0 : idx;
       for (let i = 0; i < parsedLyrics.length; i++) {
         const line = parsedLyrics[i];
         const el = line.lineEl;
-        el.classList.remove('active', 'd1', 'd2', 'past');
+        const dist = idx === -1 ? i + 1 : Math.abs(i - idx);
+        el.classList.remove('active', 'd1', 'd2', 'd3', 'past', 'far-hidden');
+
         if (i === idx) {
           el.classList.add('active');
         } else {
           for (const tok of line.tokens) {
-            if (tok.el) {
+            if (tok.el && (tok.el.classList.contains('sung') || tok.el.style.length > 0)) {
               tok.el.classList.remove('sung');
-              tok.el.style.removeProperty('--fill');
-              tok.el.style.removeProperty('--lift');
-              tok.el.style.removeProperty('--sc');
-              tok.el.style.removeProperty('--glow');
+              tok.el.removeAttribute('style');
             }
           }
-          const dist = idx === -1 ? i + 1 : Math.abs(i - idx);
-          if (dist === 1) el.classList.add('d1');
-          else if (dist === 2) el.classList.add('d2');
-          if (idx >= 0 && i < idx) el.classList.add('past');
+          if (Math.abs(i - centerIdx) > 6) {
+            el.classList.add('far-hidden');
+          } else {
+            if (dist === 1) el.classList.add('d1');
+            else if (dist === 2) el.classList.add('d2');
+            else el.classList.add('d3');
+            if (idx >= 0 && i < idx) el.classList.add('past');
+          }
         }
       }
 
       if (idx >= 0 && parsedLyrics[idx].lineEl) {
         const targetEl = parsedLyrics[idx].lineEl;
-        const colH = lyricsCol.clientHeight;
-        const offset = targetEl.offsetTop - colH * 0.34 + targetEl.offsetHeight * 0.5;
+        const offset = targetEl.offsetTop - lyricsCol.clientHeight * 0.34 + targetEl.offsetHeight * 0.5;
         lyricsScroll.style.transform = `translateY(${-Math.max(0, offset)}px)`;
       } else {
         lyricsScroll.style.transform = 'translateY(0px)';
@@ -1504,33 +1472,29 @@
         if (posSec >= tok.end + 0.08) {
           if (!el.classList.contains('sung')) {
             el.classList.add('sung');
-            el.style.setProperty('--fill', '100%');
-            el.style.setProperty('--lift', '-0.8px');
-            el.style.setProperty('--sc', '1');
-            el.style.setProperty('--glow', '0px');
+            el.removeAttribute('style');
           }
         } else if (posSec >= tok.start - 0.05) {
           el.classList.remove('sung');
           const dur = Math.max(0.08, tok.end - tok.start);
           const p = Math.min(1, Math.max(0, (posSec - tok.start) / dur));
           const arch = Math.sin(p * Math.PI);
-          el.style.setProperty('--fill', `${(p * 100).toFixed(1)}%`);
-          el.style.setProperty('--lift', `${(-(1.0 + arch * 3.4)).toFixed(2)}px`);
+          el.style.setProperty('--fill', `${(p * 100).toFixed(0)}%`);
+          el.style.setProperty('--lift', `${(-(1.0 + arch * 3.4)).toFixed(1)}px`);
           el.style.setProperty('--sc', (1 + arch * 0.042).toFixed(3));
-          el.style.setProperty('--glow', `${(arch * 11).toFixed(1)}px`);
+          el.style.setProperty('--glow', `${(arch * 10).toFixed(0)}px`);
         } else {
-          el.classList.remove('sung');
-          el.style.setProperty('--fill', '0%');
-          el.style.setProperty('--lift', '0px');
-          el.style.setProperty('--sc', '1');
-          el.style.setProperty('--glow', '0px');
+          if (el.classList.contains('sung') || el.style.length > 0) {
+            el.classList.remove('sung');
+            el.removeAttribute('style');
+          }
         }
       }
     }
   }
 
   /* =========================================================
-     6. FAST COVER + APPLE MUSIC MOTION COVER PIPELINE
+     6. COVER + APPLE MUSIC MOTION COVER PIPELINE
      ========================================================= */
   function clearMotionVideo() {
     badgeFlags.motion = false;
@@ -1553,8 +1517,6 @@
       coverImg.classList.add('loaded');
       labelImg.src = src;
       labelImg.classList.add('loaded');
-      bgVeil.src = src;
-      bgVeil.style.opacity = '0.32';
       sleeve.classList.add('has-cover');
     };
     if (retryOnErr) {
@@ -1573,18 +1535,11 @@
       if (reqKey !== currentTrackKey || !data) return;
 
       if ((!currentMeta.artist && data.artist) || (!currentMeta.album && data.album)) {
-        applyTrackMeta(
-          currentMeta.title,
-          currentMeta.artist || data.artist,
-          currentMeta.album || data.album
-        );
+        applyTrackMeta(currentMeta.title, currentMeta.artist || data.artist, currentMeta.album || data.album);
       }
-
       if (data.hiResCover) {
-        coverUpgraded = true;
         applyStaticCover(data.hiResCover, false, reqKey);
       }
-
       if (cfg.enableMotionCover && data.motionVideo) {
         motionVideo.oncanplay = () => {
           if (reqKey !== currentTrackKey) return;
@@ -1592,7 +1547,7 @@
           document.body.classList.add('has-motion');
           badgeFlags.motion = true;
           updateBadge();
-          if (state.playing) motionVideo.play().catch(() => {});
+          if (state.playing && !wallpaperPaused) motionVideo.play().catch(() => {});
           else motionVideo.pause();
         };
         motionVideo.onerror = () => clearMotionVideo();
@@ -1622,9 +1577,17 @@
   }
 
   /* =========================================================
-     7. HIGH-FREQUENCY BRIDGE POLLING (180ms) & 60FPS LOOP
+     7. ADAPTIVE POLLING & POWER-AWARE THROTTLED RENDER LOOP
      ========================================================= */
+  function scheduleNextPoll() {
+    clearTimeout(pollTimer);
+    if (wallpaperPaused || document.hidden) return;
+    const delay = state.playing ? 350 : 1200;
+    pollTimer = setTimeout(pollBridge, delay);
+  }
+
   async function pollBridge() {
+    if (wallpaperPaused || document.hidden) return;
     try {
       const res = await fetch(`${BRIDGE}/state`, { cache: 'no-store' });
       if (!res.ok) throw new Error('bad');
@@ -1640,13 +1603,13 @@
         sleeve.classList.remove('has-cover');
         coverImg.classList.remove('loaded');
         labelImg.classList.remove('loaded');
-        bgVeil.style.opacity = '0';
         clearMotionVideo();
         state.active = false;
         state.playing = false;
         currentTrackKey = '';
         smtcCoverLoadedKey = '';
         lyricsScroll.innerHTML = '<div class="lyrics-empty">音乐响起后，歌词将在此同步呈现</div>';
+        scheduleNextPoll();
         return;
       }
 
@@ -1657,8 +1620,8 @@
       iconPlay.style.display = d.playing ? 'none' : 'block';
 
       if (motionVideo.classList.contains('playing')) {
-        if (d.playing && motionVideo.paused) motionVideo.play().catch(() => {});
-        else if (!d.playing && !motionVideo.paused) motionVideo.pause();
+        if (d.playing && !wallpaperPaused && motionVideo.paused) motionVideo.play().catch(() => {});
+        else if ((!d.playing || wallpaperPaused) && !motionVideo.paused) motionVideo.pause();
       }
 
       const now = performance.now();
@@ -1669,7 +1632,6 @@
       state.playing = !!d.playing;
       state.duration = d.duration || 0;
 
-      // Accept server position immediately if track changed, not dragging, or seek lock expired
       if (!isDragging && (d.trackKey !== currentTrackKey || now >= localSeekLockUntil || Math.abs(serverPos - predictedPos) < 1.2)) {
         state.position = serverPos;
         state.lastSyncPerf = now;
@@ -1678,7 +1640,6 @@
       if (d.trackKey !== currentTrackKey) {
         currentTrackKey = d.trackKey;
         smtcCoverLoadedKey = '';
-        coverUpgraded = false;
         localSeekLockUntil = 0;
         clearMotionVideo();
         sleeve.classList.remove('has-cover');
@@ -1691,7 +1652,6 @@
         loadEnhancedArtwork(d.title, d.artist, d.album, reqKey);
       }
 
-      // Catch SMTC thumbnail as soon as MyGo Music finishes attaching it (~200ms after track switch)!
       if (d.hasCover && smtcCoverLoadedKey !== currentTrackKey) {
         smtcCoverLoadedKey = currentTrackKey;
         applyStaticCover(`${BRIDGE}/cover?k=${encodeURIComponent(currentTrackKey)}&t=${Date.now()}`, true, currentTrackKey, true);
@@ -1699,37 +1659,87 @@
     } catch (e) {
       bridgeConnected = false;
     }
+    scheduleNextPoll();
   }
 
   function mainLoop(now) {
-    const tSec = now * 0.001;
-    renderFluidMesh(tSec);
-    renderDust(tSec);
-
-    if (state.active) {
-      let cur = state.position;
-      if (state.playing) {
-        cur += (now - state.lastSyncPerf) / 1000;
-      }
-      if (state.duration > 0) cur = Math.min(state.duration, Math.max(0, cur));
-      if (!isDragging) {
-        const pct = state.duration > 0 ? (cur / state.duration) * 100 : 0;
-        progressFill.style.width = `${pct.toFixed(2)}%`;
-        curTimeEl.textContent = fmtTime(cur);
-      }
-      durTimeEl.textContent = fmtTime(state.duration);
-      updateLyrics60fps(cur);
-    } else {
-      progressFill.style.width = '0%';
-      curTimeEl.textContent = '0:00';
-      durTimeEl.textContent = '0:00';
+    if (wallpaperPaused || document.hidden) {
+      rafId = null;
+      return;
     }
-    requestAnimationFrame(mainLoop);
+
+    const tSec = now * 0.001;
+
+    // Aurora background: 12fps when playing, 4fps while palette settling when paused, 0fps when settled & paused!
+    const bgInterval = state.playing ? 83 : (paletteSettled ? 2500 : 120);
+    if (now - lastBgFrame >= bgInterval) {
+      lastBgFrame = now;
+      renderFluidMesh(tSec);
+    }
+
+    // Bokeh dust: 20fps when playing, paused when music paused
+    if (state.playing && cfg.showDust && now - lastDustFrame >= 50) {
+      lastDustFrame = now;
+      renderDust(tSec);
+    }
+
+    // Lyrics & progress: 30fps when playing, only once on state change when paused
+    const lyrInterval = state.playing ? 33 : 400;
+    if (now - lastLyricFrame >= lyrInterval) {
+      lastLyricFrame = now;
+      if (state.active) {
+        let cur = state.position;
+        if (state.playing) cur += (now - state.lastSyncPerf) / 1000;
+        if (state.duration > 0) cur = Math.min(state.duration, Math.max(0, cur));
+        if (!isDragging) {
+          const pct = state.duration > 0 ? (cur / state.duration) * 100 : 0;
+          progressFill.style.width = `${pct.toFixed(2)}%`;
+          const tStr = fmtTime(cur);
+          if (tStr !== lastTimeStr) { curTimeEl.textContent = tStr; lastTimeStr = tStr; }
+        }
+        const dStr = fmtTime(state.duration);
+        if (dStr !== lastDurStr) { durTimeEl.textContent = dStr; lastDurStr = dStr; }
+        updateLyrics(cur);
+      } else {
+        progressFill.style.width = '0%';
+        if (lastTimeStr !== '0:00') { curTimeEl.textContent = '0:00'; lastTimeStr = '0:00'; }
+        if (lastDurStr !== '0:00') { durTimeEl.textContent = '0:00'; lastDurStr = '0:00'; }
+      }
+    }
+
+    rafId = requestAnimationFrame(mainLoop);
   }
 
-  setInterval(pollBridge, 180);
+  function setWallpaperPaused(paused) {
+    if (wallpaperPaused === paused) return;
+    wallpaperPaused = paused;
+    document.body.classList.toggle('wp-paused', paused);
+    if (paused) {
+      clearTimeout(pollTimer);
+      if (rafId !== null) { cancelAnimationFrame(rafId); rafId = null; }
+      if (!motionVideo.paused) motionVideo.pause();
+    } else {
+      updateClock();
+      if (motionVideo.classList.contains('playing') && state.playing) motionVideo.play().catch(() => {});
+      pollBridge();
+      if (rafId === null) rafId = requestAnimationFrame(mainLoop);
+    }
+  }
+
+  // Lively native pause-event hook (--pause-event true) -> 0% CPU/GPU when covered!
+  function livelyWallpaperPlaybackChanged(data) {
+    try {
+      const obj = typeof data === 'string' ? JSON.parse(data) : data;
+      setWallpaperPaused(!!(obj && obj.IsPaused));
+    } catch (e) {}
+  }
+  document.addEventListener('visibilitychange', () => setWallpaperPaused(document.hidden));
+
+  // Initial paint & start
+  renderFluidMesh(0);
+  renderDust(0);
   pollBridge();
-  requestAnimationFrame(mainLoop);
+  rafId = requestAnimationFrame(mainLoop);
 
   function livelyCurrentTrack(data) {
     if (bridgeConnected) return;
@@ -1745,30 +1755,16 @@
     }
   }
 
-  function livelyAudioListener(audioArray) {
-    if (!cfg.audioReactive || !audioArray || !audioArray.length) {
-      audioEnergy *= 0.85;
-      document.documentElement.style.setProperty('--audio-energy', audioEnergy.toFixed(3));
-      return;
-    }
-    let sum = 0;
-    const n = Math.min(20, audioArray.length);
-    for (let i = 0; i < n; i++) sum += audioArray[i] || 0;
-    const target = Math.min(1, (sum / n) * 1.55);
-    audioEnergy += (target - audioEnergy) * 0.25;
-    document.documentElement.style.setProperty('--audio-energy', audioEnergy.toFixed(3));
-  }
-
   function livelyPropertyListener(name, val) {
     if (name === 'lyricFont') {
       if (val === 0) {
         document.documentElement.style.setProperty('--lyric-font', '"Playfair Display", -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", "PingFang SC", "Microsoft YaHei UI", sans-serif');
         document.documentElement.style.setProperty('--lyric-weight', '700');
       } else if (val === 1) {
-        document.documentElement.style.setProperty('--lyric-font', '"Playfair Display", "LXGW WenKai GB Screen", "Palatino Linotype", "STKaiti", Georgia, serif');
+        document.documentElement.style.setProperty('--lyric-font', '"Playfair Display", "STZhongsong", "Noto Serif SC", Georgia, serif');
         document.documentElement.style.setProperty('--lyric-weight', '600');
       } else {
-        document.documentElement.style.setProperty('--lyric-font', '"Playfair Display", "STZhongsong", "Noto Serif SC", Georgia, serif');
+        document.documentElement.style.setProperty('--lyric-font', '"Playfair Display", "STKaiti", "KaiTi", Georgia, serif');
         document.documentElement.style.setProperty('--lyric-weight', '600');
       }
     } else if (name === 'enableMotionCover') {
@@ -1783,11 +1779,10 @@
     } else if (name === 'showDust') {
       cfg.showDust = !!val;
       dustCanvas.style.opacity = val ? '1' : '0';
+      if (!val) dustCtx.clearRect(0, 0, dustCanvas.width, dustCanvas.height);
     } else if (name === 'showClock') {
       cfg.showClock = !!val;
       clockWidget.style.opacity = val ? '1' : '0';
-    } else if (name === 'audioReactive') {
-      cfg.audioReactive = !!val;
     } else if (name === 'filmGrain') {
       grainEl.style.display = val ? 'block' : 'none';
     } else if (name === 'lyricScale') {
