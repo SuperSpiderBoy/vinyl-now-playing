@@ -13,7 +13,7 @@
 
 - **两阶段 Apple Music 官方动态封面（高覆盖率 + 秒开体验）**：
   - **第一阶段（瞬时静态展示）**：切歌瞬间优先渲染本地 SMTC 居中裁切封面（`<20ms`）并提取五色极光调色板，同步通过 `/artwork` 快速升级至 `800×800` 高清静态封面，全程零白屏、零等待。
-  - **第二阶段（后台直连加载并平滑替换）**：后台并发通过 `/motion` 直连 Apple Music `amp-api`（自动提取并缓存公共 Storefront JWT），跨地区（`US` / `CN` / `HK`）与多版本（Standard / Explicit / Deluxe）检索 `editorialVideo`，支持无专辑标签时按单曲反查所属专辑，同时兼容 `1:1` 方形与 `3:4` 竖版动态封面，解析 `768×768` H.264 `.mp4` 直链并在首帧就绪后平滑淡入替换。
+  - **第二阶段（后台直连加载并平滑替换）**：后台并发通过 `/motion` 直连 Apple Music `amp-api`（自动提取并缓存公共 Storefront JWT），按语种自动路由 `US` / `CN` / `HK` / `JP` / `KR` 多地区商店与多版本（Standard / Explicit / Deluxe）检索 `editorialVideo`；内置 Win32 繁简统一归一化与跨语种艺人名兼容，支持 `Various Artists` 电影原声带、`Remix` 单曲及无专辑标签按曲目反查所属专辑，同时兼容 `1:1` 方形与 `3:4` 竖版动态封面，解析 `768×768` H.264 `.mp4` 直链并在首帧就绪后平滑淡入替换。
   - **持久化磁盘缓存与失效自愈**：已解析的动态封面按专辑持久化缓存于 `%LOCALAPPDATA%\VinylNowPlaying\motion_cache.json`（上限 200 张专辑，约 40 KB），同专辑或再次播放 `<20ms` 秒出；若 CDN 链接失效自动静默刷新一次。
 - **毫秒级逐字浮动歌词**：
   - 优先拉取网易云 **YRC 逐字时间戳 + 双语翻译**，无 YRC 时自动回退至 `lrclib.net` 并按中英文词长合成流畅逐字节奏。

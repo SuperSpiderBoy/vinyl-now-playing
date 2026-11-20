@@ -3,6 +3,27 @@
 Add-Type -AssemblyName System.Runtime.WindowsRuntime
 Add-Type -AssemblyName System.Web
 
+# Native Win32 Traditional->Simplified Chinese normalizer (zero external deps, <0.01ms)
+if (-not ("ZhNorm" -as [type])) {
+    Add-Type -TypeDefinition @"
+using System;
+using System.Runtime.InteropServices;
+using System.Text;
+public static class ZhNorm {
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
+    private static extern int LCMapStringEx(string locale, uint flags, string src, int cchSrc, StringBuilder dst, int cchDst, IntPtr v, IntPtr r, IntPtr s);
+    public static string ToSimplified(string s) {
+        if (string.IsNullOrEmpty(s)) return "";
+        int len = LCMapStringEx("zh-CN", 0x02000000, s, s.Length, null, 0, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero);
+        if (len <= 0) return s;
+        var sb = new StringBuilder(len);
+        LCMapStringEx("zh-CN", 0x02000000, s, s.Length, sb, len, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero);
+        return sb.ToString();
+    }
+}
+"@
+}
+
 $asTask1 = ([System.WindowsRuntimeSystemExtensions].GetMethods() | Where-Object {
     $_.Name -eq 'AsTask' -and $_.GetParameters().Count -eq 1 -and $_.GetParameters()[0].ParameterType.Name -eq 'IAsyncOperation`1'
 })[0]
@@ -191,17 +212,22 @@ $netWorker = {
 
     function Normalize-Key($s) {
         if (-not $s) { return "" }
-        return ($s.ToLower() -replace '[^\p{L}\p{Nd}]', '')
+        $simp = [ZhNorm]::ToSimplified($s)
+        return ($simp.ToLower() -replace '[^\p{L}\p{Nd}]', '')
     }
 
     function Clean-Title($s) {
         if (-not $s) { return "" }
-        return ($s -replace '\s*[\(\[（【](feat\.|ft\.|Live|Remaster|Explicit|Deluxe|Acoustic|Radio Edit|Version).*?[\)\]）】]', '').Trim()
+        $c = $s -replace '\s*[\(\[（【](feat\.|ft\.|with\s|Live|Remaster|Explicit|Deluxe|Acoustic|Radio Edit|Version|Remix|Mix|Edit|From\s|OST).*?[\)\]）】]', ''
+        $c = $c -replace '\s*-\s*(From\s.*|.*Remix|.*Mix|.*Version|Live|Remaster.*)$', ''
+        return $c.Trim()
     }
 
     function Clean-Album($s) {
         if (-not $s) { return "" }
-        return ($s -replace '\s*[\(\[（【](Deluxe|Expanded|Remaster|Edition|Bonus|Explicit|Clean|Single|EP|Alternate|Complete|Anniversary).*?[\)\]）】]', '' -replace '\s*-\s*(Single|EP)$', '').Trim()
+        $c = $s -replace '\s*[\(\[（【](Deluxe|Expanded|Remaster|Edition|Bonus|Explicit|Clean|Single|EP|Alternate|Complete|Anniversary|Remix|Soundtrack|Original Motion Picture.*|Music From.*|From\s.*).*?[\)\]）】]', ''
+        $c = $c -replace '\s*-\s*(Single|EP|Remix|Soundtrack|Original Motion Picture.*)$', ''
+        return $c.Trim()
     }
 
     function Test-LooseMatch($a, $b) {
@@ -209,6 +235,24 @@ $netWorker = {
         $nb = Normalize-Key $b
         if (-not $na -or -not $nb) { return $false }
         return ($na -eq $nb -or $na.Contains($nb) -or $nb.Contains($na))
+    }
+
+    function Test-ArtistRelaxed($wantArtist, $candArtist, $wantAlbum, $candAlbum) {
+        if (-not $wantArtist) { return $true }
+        if (Test-LooseMatch $wantArtist $candArtist) { return $true }
+        # Allow soundtrack / compilation albums credited to Various Artists
+        if ($candArtist -match '^(Various Artists|群星|Soundtrack|Original .*Cast)$') { return $true }
+        # Allow CJK <-> Latin artist alias mismatch (e.g. 周杰伦 <-> Jay Chou, 邓紫棋 <-> G.E.M.) when album strongly matches
+        $wantCjk = ($wantArtist -match '[\u3040-\u30ff\u4e00-\u9fff\uac00-\ud7af]')
+        $candCjk = ($candArtist -match '[\u3040-\u30ff\u4e00-\u9fff\uac00-\ud7af]')
+        if ($wantCjk -ne $candCjk) {
+            $na = Normalize-Key $wantAlbum
+            $nb = Normalize-Key $candAlbum
+            if ($na -and $nb -and ($na -eq $nb -or ($na.Length -ge 3 -and ($na.Contains($nb) -or $nb.Contains($na))))) {
+                return $true
+            }
+        }
+        return $false
     }
 
     function Save-MotionDiskCache {
@@ -373,41 +417,54 @@ $netWorker = {
             }
         }
 
-        # 1. Search albums first when album metadata exists
+        # 1. Search albums first when album metadata exists (strict artist match prioritized over relaxed OST/cross-script)
         if ($cleanAlbum) {
-            $term = "$cleanAlbum $cleanArtist".Trim()
-            $url = "https://amp-api.music.apple.com/v1/catalog/$sf/search?term=$([uri]::EscapeDataString($term))&types=albums&limit=8&extend=editorialVideo"
-            $d = & $invokeAmp $url
-            if ($d -and $d.results -and $d.results.albums -and $d.results.albums.data) {
-                $bestStatic = $null
-                foreach ($a in $d.results.albums.data) {
-                    $attr = $a.attributes
-                    if (-not $attr) { continue }
-                    $albOk = Test-LooseMatch $cleanAlbum ([string]$attr.name)
-                    $artOk = (-not $cleanArtist) -or (Test-LooseMatch $cleanArtist ([string]$attr.artistName))
-                    if (-not ($albOk -and $artOk)) { continue }
-                    if (-not $bestStatic) { $bestStatic = $a }
-                    $m3u8 = Pick-EditorialVideoUrl $attr.editorialVideo
-                    if ($m3u8) {
-                        return @{ m3u8 = $m3u8; album = $a; storefront = $sf }
+            $queries = @("$cleanAlbum $cleanArtist".Trim())
+            # For multi-word soundtrack/OST album names, also allow album-only search if artist-qualified query misses
+            if ($cleanArtist -and $cleanAlbum.Length -ge 6) { $queries += $cleanAlbum }
+            $triedQ = @{}
+            foreach ($term in $queries) {
+                if ($triedQ.ContainsKey($term)) { continue }
+                $triedQ[$term] = $true
+                $url = "https://amp-api.music.apple.com/v1/catalog/$sf/search?term=$([uri]::EscapeDataString($term))&types=albums&limit=8&extend=editorialVideo"
+                $d = & $invokeAmp $url
+                if ($d -and $d.results -and $d.results.albums -and $d.results.albums.data) {
+                    $relaxedHit = $null
+                    foreach ($a in $d.results.albums.data) {
+                        $attr = $a.attributes
+                        if (-not $attr) { continue }
+                        $candAlb = [string]$attr.name
+                        $candArt = [string]$attr.artistName
+                        if (-not (Test-LooseMatch $cleanAlbum $candAlb)) { continue }
+                        $m3u8 = Pick-EditorialVideoUrl $attr.editorialVideo
+                        if (-not $m3u8) { continue }
+                        if ((-not $cleanArtist) -or (Test-LooseMatch $cleanArtist $candArt)) {
+                            return @{ m3u8 = $m3u8; album = $a; storefront = $sf }
+                        }
+                        if (-not $relaxedHit -and (Test-ArtistRelaxed $cleanArtist $candArt $cleanAlbum $candAlb)) {
+                            $relaxedHit = @{ m3u8 = $m3u8; album = $a; storefront = $sf }
+                        }
                     }
+                    if ($relaxedHit) { return $relaxedHit }
                 }
             }
         }
 
-        # 2. Fallback: search songs -> resolve their parent album IDs -> batch fetch /albums?extend=editorialVideo
-        # Handles singles, mismatched album tags, remixes, OSTs, or missing album metadata!
+        # 2. Fallback: search songs -> resolve up to 6 parent album IDs -> batch fetch /albums?extend=editorialVideo
+        # Handles Remix singles -> original album, OSTs (Various Artists), missing/mismatched album tags & cross-script names!
         if ($cleanTitle) {
             $term = "$cleanTitle $cleanArtist".Trim()
-            $url = "https://amp-api.music.apple.com/v1/catalog/$sf/search?term=$([uri]::EscapeDataString($term))&types=songs&limit=6"
+            $url = "https://amp-api.music.apple.com/v1/catalog/$sf/search?term=$([uri]::EscapeDataString($term))&types=songs&limit=8"
             $d = & $invokeAmp $url
             if ($d -and $d.results -and $d.results.songs -and $d.results.songs.data) {
                 $albIds = New-Object System.Collections.ArrayList
                 foreach ($s in $d.results.songs.data) {
                     $attr = $s.attributes
                     if (-not $attr) { continue }
-                    $tOk = Test-LooseMatch $cleanTitle ([string]$attr.name)
-                    $aOk = (-not $cleanArtist) -or (Test-LooseMatch $cleanArtist ([string]$attr.artistName))
+                    $candTitle = [string]$attr.name
+                    $candArt = [string]$attr.artistName
+                    $tOk = Test-LooseMatch $cleanTitle $candTitle
+                    $aOk = Test-ArtistRelaxed $cleanArtist $candArt $cleanTitle $candTitle
                     if (-not ($tOk -and $aOk)) { continue }
                     $uStr = [string]$attr.url
                     $mId = [regex]::Match($uStr, '/album/[^/]+/(\d+)')
@@ -415,7 +472,7 @@ $netWorker = {
                         $aid = $mId.Groups[1].Value
                         if (-not $albIds.Contains($aid)) { [void]$albIds.Add($aid) }
                     }
-                    if ($albIds.Count -ge 4) { break }
+                    if ($albIds.Count -ge 6) { break }
                 }
                 if ($albIds.Count -gt 0) {
                     $idsCsv = ($albIds -join ",")
@@ -522,8 +579,11 @@ $netWorker = {
                     $shared.motionCache.Remove($normAlbKey)
                 }
 
-                $isCjk = (("$cleanTitle $cleanArtist $cleanAlbum") -match '[\u4e00-\u9fff]')
-                $storefronts = if ($isCjk) { @("cn", "hk", "us") } else { @("us", "cn") }
+                $allMeta = "$cleanTitle $cleanArtist $cleanAlbum"
+                $storefronts = if ($allMeta -match '[\u3040-\u30ff]') { @("jp", "us", "cn") }
+                    elseif ($allMeta -match '[\uac00-\ud7af]') { @("kr", "us", "cn") }
+                    elseif ($allMeta -match '[\u4e00-\u9fff]') { @("cn", "hk", "us") }
+                    else { @("us", "cn") }
 
                 $mp4 = ""
                 $usedSf = ""
