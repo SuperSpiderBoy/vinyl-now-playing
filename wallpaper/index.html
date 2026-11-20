@@ -929,6 +929,7 @@
   let cfg = { enableMotionCover: true, showDust: true, showClock: true };
   let currentTrackKey = '';
   let smtcCoverLoadedKey = '';
+  let motionStartedKey = '';
   let bridgeConnected = false;
   let currentMeta = { title: '', artist: '', album: '' };
   let badgeFlags = { motion: false, yrc: false };
@@ -1527,32 +1528,74 @@
     loader.src = src;
   }
 
+  function attachMotionVideo(videoUrl, title, artist, album, reqKey, allowRefresh = true) {
+    if (!cfg.enableMotionCover || !videoUrl || reqKey !== currentTrackKey) return;
+    motionVideo.oncanplay = () => {
+      if (reqKey !== currentTrackKey) return;
+      motionVideo.classList.add('playing');
+      document.body.classList.add('has-motion');
+      badgeFlags.motion = true;
+      updateBadge();
+      if (state.playing && !wallpaperPaused) motionVideo.play().catch(() => {});
+      else motionVideo.pause();
+    };
+    motionVideo.onerror = () => {
+      if (reqKey !== currentTrackKey) return;
+      clearMotionVideo();
+      // If a disk-cached CDN URL expired, silently refresh once in the background
+      if (allowRefresh) {
+        loadMotionCover(title, artist, album, reqKey, true);
+      }
+    };
+    motionVideo.src = videoUrl;
+    motionVideo.load();
+  }
+
+  // Stage 2: Async background Apple Music Motion Cover resolution (never blocks static cover!)
+  async function loadMotionCover(title, artist, album, reqKey, forceRefresh = false) {
+    if (!cfg.enableMotionCover || reqKey !== currentTrackKey) return;
+    if (!forceRefresh && motionStartedKey === reqKey) return;
+    motionStartedKey = reqKey;
+    try {
+      const url = `${BRIDGE}/motion?title=${encodeURIComponent(title)}&artist=${encodeURIComponent(artist)}&album=${encodeURIComponent(album || '')}${forceRefresh ? '&refresh=1' : ''}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      if (reqKey !== currentTrackKey || !data) return;
+      if (data.hiResCover && !coverImg.classList.contains('loaded')) {
+        applyStaticCover(data.hiResCover, true, reqKey);
+      }
+      if (data.motionVideo) {
+        attachMotionVideo(data.motionVideo, title, artist, album, reqKey, !forceRefresh);
+      }
+    } catch (e) {}
+  }
+
+  // Stage 1: Instant static cover & metadata upgrade; Stage 2 runs concurrently in background
   async function loadEnhancedArtwork(title, artist, album, reqKey) {
+    // If we already have album/title metadata, start Stage 2 immediately in parallel (zero waterfall!)
+    if (cfg.enableMotionCover && (album || title)) {
+      loadMotionCover(title, artist, album, reqKey, false);
+    }
     try {
       const url = `${BRIDGE}/artwork?title=${encodeURIComponent(title)}&artist=${encodeURIComponent(artist)}&album=${encodeURIComponent(album || '')}`;
       const res = await fetch(url);
       const data = await res.json();
       if (reqKey !== currentTrackKey || !data) return;
 
+      const resolvedArtist = currentMeta.artist || data.artist || artist;
+      const resolvedAlbum = currentMeta.album || data.album || album;
       if ((!currentMeta.artist && data.artist) || (!currentMeta.album && data.album)) {
-        applyTrackMeta(currentMeta.title, currentMeta.artist || data.artist, currentMeta.album || data.album);
+        applyTrackMeta(currentMeta.title, resolvedArtist, resolvedAlbum);
       }
       if (data.hiResCover) {
-        applyStaticCover(data.hiResCover, false, reqKey);
+        applyStaticCover(data.hiResCover, !smtcCoverLoadedKey, reqKey);
       }
-      if (cfg.enableMotionCover && data.motionVideo) {
-        motionVideo.oncanplay = () => {
-          if (reqKey !== currentTrackKey) return;
-          motionVideo.classList.add('playing');
-          document.body.classList.add('has-motion');
-          badgeFlags.motion = true;
-          updateBadge();
-          if (state.playing && !wallpaperPaused) motionVideo.play().catch(() => {});
-          else motionVideo.pause();
-        };
-        motionVideo.onerror = () => clearMotionVideo();
-        motionVideo.src = data.motionVideo;
-        motionVideo.load();
+      if (cfg.enableMotionCover && data.motionVideo && !badgeFlags.motion) {
+        attachMotionVideo(data.motionVideo, title, resolvedArtist, resolvedAlbum, reqKey, true);
+      } else if (cfg.enableMotionCover && !album && resolvedAlbum && !badgeFlags.motion) {
+        // Retry Stage 2 if Stage 1 newly discovered a missing album name
+        motionStartedKey = '';
+        loadMotionCover(title, resolvedArtist, resolvedAlbum, reqKey, false);
       }
     } catch (e) {}
   }
@@ -1640,6 +1683,7 @@
       if (d.trackKey !== currentTrackKey) {
         currentTrackKey = d.trackKey;
         smtcCoverLoadedKey = '';
+        motionStartedKey = '';
         localSeekLockUntil = 0;
         clearMotionVideo();
         sleeve.classList.remove('has-cover');
@@ -1770,6 +1814,10 @@
     } else if (name === 'enableMotionCover') {
       cfg.enableMotionCover = !!val;
       if (!val) clearMotionVideo();
+      else if (state.active && currentTrackKey) {
+        motionStartedKey = '';
+        loadMotionCover(currentMeta.title, currentMeta.artist, currentMeta.album, currentTrackKey, false);
+      }
     } else if (name === 'showTonearm') {
       document.body.classList.toggle('hide-tonearm', !val);
     } else if (name === 'vinylSpin') {
