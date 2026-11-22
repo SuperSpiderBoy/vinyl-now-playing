@@ -8,17 +8,17 @@ if (-not ("ZhNorm" -as [type])) {
     Add-Type -TypeDefinition @"
 using System;
 using System.Runtime.InteropServices;
-using System.Text;
 public static class ZhNorm {
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
-    private static extern int LCMapStringEx(string locale, uint flags, string src, int cchSrc, StringBuilder dst, int cchDst, IntPtr v, IntPtr r, IntPtr s);
+    private static extern int LCMapStringEx(string locale, uint flags, string src, int cchSrc, [Out] char[] dst, int cchDst, IntPtr v, IntPtr r, IntPtr s);
     public static string ToSimplified(string s) {
         if (string.IsNullOrEmpty(s)) return "";
         int len = LCMapStringEx("zh-CN", 0x02000000, s, s.Length, null, 0, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero);
         if (len <= 0) return s;
-        var sb = new StringBuilder(len);
-        LCMapStringEx("zh-CN", 0x02000000, s, s.Length, sb, len, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero);
-        return sb.ToString();
+        char[] buf = new char[len];
+        int written = LCMapStringEx("zh-CN", 0x02000000, s, s.Length, buf, len, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero);
+        if (written <= 0) return s;
+        return new string(buf, 0, written);
     }
 }
 "@
@@ -98,6 +98,8 @@ $script:seekPos = 0.0
 $script:seekAt = [DateTimeOffset]::MinValue
 $script:seekBaseUpd = [DateTimeOffset]::MinValue
 $script:lastStateKey = ""
+$script:prevStateUpd = [DateTimeOffset]::MinValue
+$script:prevStateDur = -1.0
 $script:trackChangedAt = [DateTimeOffset]::MinValue
 $script:staleUpdAtSwitch = [DateTimeOffset]::MinValue
 $script:staleDurAtSwitch = -1.0
@@ -767,16 +769,24 @@ while ($listener.IsListening) {
                     $key = "$title||$artist||$album"
 
                     if ($key -ne $script:lastStateKey) {
-                        if ($script:lastStateKey -ne "") {
+                        # ONLY enable switch guard if LastUpdatedTime is genuinely still identical to the PREVIOUS track's LastUpdatedTime!
+                        if ($script:lastStateKey -ne "" -and $tl.LastUpdatedTime -eq $script:prevStateUpd -and $script:prevStateUpd -ne [DateTimeOffset]::MinValue) {
                             $script:trackChangedAt = [DateTimeOffset]::Now
                             $script:staleUpdAtSwitch = $tl.LastUpdatedTime
-                            $script:staleDurAtSwitch = $dur
+                            $script:staleDurAtSwitch = $script:prevStateDur
+                        } else {
+                            $script:staleUpdAtSwitch = [DateTimeOffset]::MinValue
+                            $script:staleDurAtSwitch = -1.0
                         }
                         $script:lastStateKey = $key
                         $script:seekTrackKey = ""
-                    } elseif ($script:staleUpdAtSwitch -ne [DateTimeOffset]::MinValue -and $tl.LastUpdatedTime -ne $script:staleUpdAtSwitch) {
+                    } elseif ($script:staleUpdAtSwitch -ne [DateTimeOffset]::MinValue -and ($tl.LastUpdatedTime -ne $script:staleUpdAtSwitch -or ($dur -gt 0 -and $dur -ne $script:staleDurAtSwitch))) {
                         $script:staleUpdAtSwitch = [DateTimeOffset]::MinValue
+                        $script:staleDurAtSwitch = -1.0
                     }
+
+                    $script:prevStateUpd = $tl.LastUpdatedTime
+                    $script:prevStateDur = $dur
 
                     $useSeekAnchor = ($script:seekTrackKey -eq $key) -and ($tl.LastUpdatedTime -eq $script:seekBaseUpd) -and (([DateTimeOffset]::Now - $script:seekAt).TotalSeconds -lt 6.0)
                     $useSwitchGuard = ($script:staleUpdAtSwitch -ne [DateTimeOffset]::MinValue) -and ($tl.LastUpdatedTime -eq $script:staleUpdAtSwitch) -and (([DateTimeOffset]::Now - $script:trackChangedAt).TotalSeconds -lt 600.0)

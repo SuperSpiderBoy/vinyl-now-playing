@@ -13,7 +13,7 @@ Unregister-ScheduledTask -TaskName "VinylSyncBridge" -Confirm:$false
 
 # 2. Kill any running sync_bridge.ps1 process
 Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" |
-    Where-Object { $_.CommandLine -match 'sync_bridge\.ps1' } |
+    Where-Object { $_.ProcessId -ne $PID -and $_.CommandLine -match '-File\s+"?[^"]*sync_bridge\.ps1' } |
     ForEach-Object { Stop-Process -Id $_.ProcessId -Force }
 
 # 3. Remove bridge & Lively wallpaper copy

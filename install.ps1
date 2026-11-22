@@ -36,7 +36,7 @@ Write-Host "[2/3] 已部署同步桥接脚本到：$bridgeDir" -ForegroundColor 
 
 # 4. Stop any previous sync_bridge instance
 Get-CimInstance Win32_Process -Filter "Name='powershell.exe'" -ErrorAction SilentlyContinue |
-    Where-Object { $_.CommandLine -match 'sync_bridge\.ps1' } |
+    Where-Object { $_.ProcessId -ne $PID -and $_.CommandLine -match '-File\s+"?[^"]*sync_bridge\.ps1' } |
     ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
 
 # 5. Register & start Windows Scheduled Task for logon auto-start
